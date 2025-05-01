@@ -5,12 +5,11 @@
   "main": "main.js",
   "type": "module",
   "scripts": {
-    "start": "chcp 65001 && cross-env NODE_ENV=production CHARSET=UTF-8 LANG=ko_KR.UTF-8 electron .",
-    "dev": "chcp 65001 && cross-env NODE_ENV=development CHARSET=UTF-8 LANG=ko_KR.UTF-8 electron .",
+    "start": "node scripts/run-electron.cjs production",
+    "dev": "node scripts/run-electron.cjs development",
     "build": "electron-builder build --win --publish never",
     "deploy": "electron-builder build --win --publish always",
-    "fix-encoding": "node -e \"require('fs').writeFileSync('VERSION.txt', require('fs').readFileSync('VERSION.txt', 'utf8'), 'utf8')\"",
-    "prestart": "chcp 65001 && node -e \"process.env.CHARSET='UTF-8'; process.env.LANG='ko_KR.UTF-8'\""
+    "fix-encoding": "node -e \"require('fs').writeFileSync('VERSION.txt', require('fs').readFileSync('VERSION.txt', 'utf8'), 'utf8')\""
   },
   "build": {
     "appId": "com.gogoya03.app",
