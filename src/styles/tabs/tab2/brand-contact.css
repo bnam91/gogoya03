@@ -1,0 +1,1436 @@
+/* 벤더 컨테이너 레이아웃 */
+.brand-contact-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr 300px;
+    gap: 15px;
+    height: calc(100vh - 120px);
+}
+
+/* 스크롤바 스타일은 main.css에서 전역으로 적용됨 */
+/* 개별 스타일 필요시 아래 주석 해제
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+*/
+
+.brand-contact-left {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow-y: hidden;
+    position: relative;
+    height: 100%;
+}
+
+.brand-contact-left::before {
+    content: "데이터를 불러오는 중입니다. 기다려주세요.";
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    color: #000000;
+    font-size: 16px;
+    white-space: nowrap;
+}
+
+.brand-contact-left .brand-contact-data-list {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    height: 100%;
+}
+
+.brand-contact-left .brand-contact-data-list.loaded {
+    opacity: 1;
+}
+
+.brand-contact-right {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.brand-contact-extra {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow-y: auto;
+    height: 100%;
+}
+
+.extra-content {
+    padding: 20px;
+    height: 100%;
+}
+
+.extra-content h3 {
+    color: #131314;
+    font-size: 1.2em;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.extra-content .call-status-form {
+    margin-top: 0;
+    padding: 0;
+    background-color: transparent;
+}
+
+.extra-content .call-status-form .call-info {
+    margin-top: 0;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+}
+
+.extra-content .call-status-form .form-buttons {
+    margin-top: 20px;
+}
+
+/* 카드 컨테이너 스타일 */
+.card-container {
+    padding: 15px;
+    overflow-y: auto;
+}
+
+.card {
+    background: white;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.card.selected {
+    border-color: #4CAF50;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+/* NEW 배지 스타일 */
+.new-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background-color: #4CAF50;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    font-weight: 500;
+    z-index: 1;
+}
+
+/* 카드 헤더 */
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f0f0f0;
+    position: relative;
+    padding-left: 50px; /* NEW 배지를 위한 공간 확보 */
+}
+
+.card-header .brand-name {
+    font-weight: 700 !important;
+    color: #131314 !important;
+    font-size: 1.2em !important;
+    order: 2; /* 브랜드네임을 중간으로 이동 */
+}
+
+.brand-name {
+    font-weight: 700;
+    color: #131314;
+    font-size: 1.2em;
+    order: 2; /* 브랜드네임을 중간으로 이동 */
+}
+
+.new-status {
+    position: absolute;
+    left: 0;
+    top: 32%;
+    transform: translateY(-50%);
+    background-color: #4CAF50;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    font-weight: 500;
+}
+
+.call-status {
+    order: 3; /* 통화 상태를 오른쪽으로 이동 */
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    font-size: 0.85em;
+}
+
+.call-status .status-value {
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: #f5f5f5;
+    font-size: 0.85em;
+}
+
+.call-status .status-value.missed {
+    color: #f44336;
+    background-color: #ffebee;
+}
+
+.call-status .status-value.connected {
+    color: #4CAF50;
+    background-color: #e8f5e9;
+}
+
+.call-status .next-step-value {
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: #e3f2fd;
+    color: #1976d2;
+    font-size: 0.85em;
+}
+
+/* 상품 정보 */
+.item-content {
+    margin-bottom: 16px;
+}
+
+.item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.item-name {
+    color: #131314;
+    font-size: 1.1em;
+    font-weight: 500;
+    line-height: 1.4;
+    flex: 1;
+}
+
+.item-category {
+    color: #666;
+    font-size: 0.9em;
+    margin-left: 12px;
+    padding: 4px 8px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+}
+
+.clean-name {
+    color: #666;
+    font-size: 0.9em;
+    margin-bottom: 4px;
+}
+
+.item-author {
+    color: #666;
+    font-size: 0.9em;
+}
+
+/* 카테고리 정보 */
+.category-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.category {
+    font-weight: 500;
+    color: #333;
+}
+
+.crawl-date {
+    color: #666;
+    font-size: 0.85em;
+}
+
+/* 등급 표시 */
+.grade-value {
+    color: #666;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+/* 인스타그램 링크 */
+.item-feed {
+    margin-top: 8px;
+}
+
+.feed-link {
+    color: #007bff;
+    text-decoration: none;
+    font-size: 0.9em;
+    transition: color 0.3s;
+}
+
+.feed-link:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+/* 브랜드 정보 컨테이너 */
+.brand-info-container {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.brand-info-header {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    background: #f8f9fa;
+}
+
+.brand-info-header h3 {
+    margin: 0;
+    color: #131314;
+    font-size: 1.5em !important;
+    margin-bottom: 15px;
+}
+
+.brand-screenshot {
+    width: 100%;
+    max-height: 200px;
+    overflow: hidden;
+    border-radius: 8px;
+    margin-top: 15px;
+}
+
+.brand-screenshot img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+}
+
+.brand-info-grid {
+    padding: 20px;
+    font-size: 1em !important;
+}
+
+.info-section {
+    margin-bottom: 25px;
+}
+
+.info-section:last-child {
+    margin-bottom: 0;
+}
+
+.info-section h4 {
+    color: #666;
+    font-size: 0.9em !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.info-group {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 1em !important;
+}
+
+.info-item.full-width {
+    grid-column: 1 / -1;
+}
+
+.info-item label {
+    font-size: 0.85em !important;
+    color: #666;
+}
+
+.info-item span, .info-item a {
+    color: #131314;
+    font-size: 0.95em !important;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.info-item a.link {
+    color: #007bff;
+    text-decoration: none;
+    transition: color 0.3s;
+    font-size: 0.95em !important;
+}
+
+.info-item a.link:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+.phone-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.phone-number {
+    color: #131314;
+    font-size: 0.95em !important;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.call-button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    font-size: 0.95em;
+}
+
+.call-button:hover {
+    background-color: #45a049;
+}
+
+.call-button.end-call {
+    background-color: #f44336;
+}
+
+.call-button.end-call:hover {
+    background-color: #d32f2f;
+}
+
+.aliases-list {
+    color: #666;
+    font-size: 0.9em !important;
+    font-style: italic;
+}
+
+/* 모달 스타일 */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: 300px;
+    text-align: center;
+}
+
+.modal-content h3 {
+    margin-bottom: 15px;
+    color: #131314;
+}
+
+.modal-content p {
+    margin-bottom: 10px;
+    color: #666;
+}
+
+.modal-content .phone-number {
+    font-size: 1.2em;
+    font-weight: 500;
+    color: #131314;
+    margin: 10px 0;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.modal-button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.3s;
+}
+
+.modal-button.confirm {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.modal-button.confirm:hover {
+    background-color: #45a049;
+}
+
+.modal-button.cancel {
+    background-color: #f44336;
+    color: white;
+}
+
+.modal-button.cancel:hover {
+    background-color: #d32f2f;
+}
+
+.modal-button.end-call {
+    background-color: #f44336;
+    color: white;
+    margin-right: auto;
+}
+
+.modal-button.end-call:hover {
+    background-color: #d32f2f;
+}
+
+/* 통화 상태 기록 모달 스타일 */
+.call-info {
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+}
+
+.call-info p {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.call-form {
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #666;
+    font-size: 14px;
+}
+
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.form-group select {
+    background-color: white;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 60px;
+}
+
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #4CAF50;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+/* 통화 상태 폼 스타일 */
+.call-status-form {
+    margin-top: 20px;
+    padding: 20px;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+}
+
+.call-status-form .call-info {
+    margin-bottom: 20px;
+}
+
+.call-status-form h3 {
+    margin: 0 0 10px 0;
+    color: #333;
+}
+
+.call-status-form .call-info p {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.call-status-form .call-form {
+    margin-bottom: 20px;
+}
+
+.call-status-form .form-group {
+    margin-bottom: 15px;
+}
+
+.call-status-form .form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #666;
+    font-size: 14px;
+}
+
+.call-status-form .form-group select,
+.call-status-form .form-group textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.call-status-form .form-group select {
+    background-color: white;
+}
+
+.call-status-form .form-group textarea {
+    resize: vertical;
+    min-height: 60px;
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: inherit;
+    background-color: white;
+}
+
+.call-status-form .form-group textarea::placeholder {
+    color: #999;
+}
+
+.call-status-form .form-group textarea:focus {
+    outline: none;
+    border-color: #4CAF50;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+.call-status-form .form-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.call-status-form .end-call-button,
+.call-status-form .save-button,
+.call-status-form .cancel-button {
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    min-width: 100px;
+    font-weight: 500;
+}
+
+.call-status-form .end-call-button {
+    background-color: #f44336;
+    color: white;
+}
+
+.call-status-form .end-call-button:hover {
+    background-color: #d32f2f;
+}
+
+.call-status-form .save-button {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.call-status-form .save-button:hover {
+    background-color: #45a049;
+}
+
+.call-status-form .cancel-button {
+    background-color: #9e9e9e;
+    color: white;
+}
+
+.call-status-form .cancel-button:hover {
+    background-color: #757575;
+}
+
+.call-history {
+    margin-top: 20px;
+}
+
+.call-record {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    padding: 10px;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.call-record:hover {
+    background-color: #e9ecef;
+    border-color: #ced4da;
+}
+
+.call-record.selected {
+    background-color: #e3f2fd;
+    border-color: #90caf9;
+    box-shadow: 0 0 0 2px rgba(144, 202, 249, 0.3);
+}
+
+.call-record-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.call-date {
+    color: #495057;
+    font-weight: 500;
+    font-size: 0.9em;
+}
+
+.call-duration {
+    color: #6c757d;
+    font-size: 0.9em;
+}
+
+.call-record-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.record-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    line-height: 1.3;
+    margin-bottom: 8px;
+}
+
+.record-item label {
+    color: #495057;
+    font-weight: 500;
+    display: block;
+    margin-bottom: 2px;
+    font-size: 0.9em;
+}
+
+.record-item span {
+    font-size: 0.9em;
+}
+
+.record-item span.nextstep {
+    display: inline-block;
+    padding: 4px 8px;
+    background-color: #e3f2fd;
+    color: #1976d2;
+    border-radius: 4px;
+    margin-top: 2px;
+    font-size: 0.85em;
+}
+
+.record-item .notes {
+    white-space: pre-wrap;
+    color: #495057;
+    font-size: 0.9em;
+    line-height: 1.4;
+    padding: 6px 8px;
+    width: 100%;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+    margin-top: 2px;
+    overflow: auto;
+    max-height: 150px; /* 너무 길면 스크롤바 표시 */
+}
+
+.record-item .notes:empty:before {
+    content: '메모 없음';
+    color: #adb5bd;
+    font-style: italic;
+}
+
+/* NEW 상태 표시 */
+.new-status {
+    font-size: 0.75em;
+    color: #666;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: #f5f5f5;
+    margin-right: 8px;
+}
+
+.new-status.active {
+    color: #fff;
+    background-color: #4CAF50;
+}
+
+/* 인스타그램 피드 링크 */
+.item-feed {
+    margin-top: 8px;
+}
+
+.feed-link {
+    color: #007bff;
+    text-decoration: none;
+    font-size: 0.85em;
+    transition: color 0.3s;
+}
+
+.feed-link:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+/* 필터 컨테이너 스타일 */
+.filter-container {
+    background: white;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.filter-wrapper {
+    display: flex;
+    align-items: flex-end;
+    gap: 20px;
+}
+
+.filter-group {
+    display: flex;
+    gap: 20px;
+    flex: 1;
+}
+
+.filter-search {
+    position: relative;
+    flex: 1;
+}
+
+.filter-search .search-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9em;
+    transition: all 0.2s ease;
+}
+
+.filter-search .search-input:focus {
+    outline: none;
+    border-color: #4CAF50;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+}
+
+.filter-search .search-input::placeholder {
+    color: #999;
+}
+
+.filter-reset-button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    color: #666;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-reset-button:hover {
+    background-color: #e9ecef;
+    color: #333;
+}
+
+.reset-icon {
+    font-size: 1.1em;
+    transition: transform 0.3s ease;
+}
+
+.filter-reset-button.rotate .reset-icon {
+    transform: rotate(360deg);
+}
+
+.filter-dropdown {
+    position: relative;
+    flex: 1;
+}
+
+.filter-label {
+    font-size: 0.9em;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.filter-select {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: #fff;
+}
+
+.selected-items,
+.selected-grades {
+    flex: 1;
+    color: #333;
+    font-size: 0.9em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dropdown-arrow {
+    color: #666;
+    font-size: 0.8em;
+    margin-left: 8px;
+}
+
+.filter-options {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-top: 4px;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.filter-options.show {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.filter-option {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.filter-option:hover {
+    background-color: #f5f5f5;
+}
+
+.filter-option input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+.filter-option label {
+    cursor: pointer;
+    font-size: 0.9em;
+    color: #333;
+    flex: 1;
+}
+
+/* 편집 가능한 필드 스타일 */
+.info-item span.editable {
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.info-item span.editable:hover {
+    background-color: #f0f0f0;
+}
+
+.info-item span.edited {
+    background-color: #e8f5e9;
+}
+
+.info-item .edit-input {
+    width: 100%;
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: inherit;
+    font-family: inherit;
+    background-color: white;
+}
+
+.info-item .edit-input:focus {
+    outline: none;
+    border-color: #4CAF50;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+/* 토스트 메시지 스타일 제거 */
+
+.verification-status {
+    cursor: pointer;
+    display: inline-block;
+    transition: transform 0.2s;
+    font-size: inherit;
+}
+
+.verification-status:hover {
+    transform: scale(1.05);
+}
+
+.verification-status:active {
+    transform: scale(0.95);
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 500;
+    font-size: 0.9em;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+/* 인증완료 상태 */
+.status-badge.verified {
+    background-color: #4CAF50;
+    color: white;
+    border: 1px solid #43A047;
+}
+
+.status-badge.verified:hover {
+    background-color: #43A047;
+    box-shadow: 0 3px 6px rgba(76, 175, 80, 0.3);
+}
+
+/* 미인증 상태 */
+.status-badge.unverified {
+    background-color: #f44336;
+    color: white;
+    border: 1px solid #e53935;
+}
+
+.status-badge.unverified:hover {
+    background-color: #e53935;
+    box-shadow: 0 3px 6px rgba(244, 67, 54, 0.3);
+}
+
+/* 대기중 상태 */
+.status-badge.pending {
+    background-color: #FF9800;
+    color: white;
+    border: 1px solid #FB8C00;
+}
+
+.status-badge.pending:hover {
+    background-color: #FB8C00;
+    box-shadow: 0 3px 6px rgba(255, 152, 0, 0.3);
+}
+
+/* 알 수 없음 상태 */
+.status-badge.unknown {
+    background-color: #9E9E9E;
+    color: white;
+    border: 1px solid #757575;
+}
+
+.status-badge.unknown:hover {
+    background-color: #757575;
+    box-shadow: 0 3px 6px rgba(158, 158, 158, 0.3);
+}
+
+/* 아이콘 스타일 */
+.status-badge::before {
+    margin-right: 6px;
+    font-weight: bold;
+}
+
+/* 애니메이션 효과 */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.status-badge {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* 인증 상태 필터 스타일 */
+.verification-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.verification-label.true {
+    color: #4CAF50;
+    background-color: #e8f5e9;
+}
+
+.verification-label.false {
+    color: #f44336;
+    background-color: #ffebee;
+}
+
+.verification-label.yet {
+    color: #FF9800;
+    background-color: #fff3e0;
+}
+
+.selected-verification {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* 선택된 상태일 때의 스타일 */
+.filter-option[data-verification] input:checked + label {
+    font-weight: 500;
+}
+
+.filter-option[data-verification="true"] input:checked + label {
+    background-color: #e8f5e9;
+}
+
+.filter-option[data-verification="false"] input:checked + label {
+    background-color: #ffebee;
+}
+
+.filter-option[data-verification="yet"] input:checked + label {
+    background-color: #fff3e0;
+}
+
+/* 건너뛰기 상태 */
+.status-badge.skip {
+    background-color: #607D8B;
+    color: white;
+    border: 1px solid #546E7A;
+}
+
+.status-badge.skip:hover {
+    background-color: #546E7A;
+    box-shadow: 0 3px 6px rgba(96, 125, 139, 0.3);
+}
+
+.verification-label.skip {
+    color: #607D8B;
+    background-color: #ECEFF1;
+}
+
+/* 다음단계 편집 스타일 */
+.nextstep {
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.nextstep:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.nextstep-select {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.nextstep-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.nextstep-button {
+    padding: 4px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background-color 0.2s;
+}
+
+.nextstep-save {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.nextstep-save:hover {
+    background-color: #3e8e41;
+}
+
+.nextstep-cancel {
+    background-color: #f44336;
+    color: white;
+}
+
+.nextstep-cancel:hover {
+    background-color: #d32f2f;
+}
+
+/* 메모 편집 스타일 개선 */
+.notes {
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    display: block;
+}
+
+.notes:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.notes-input {
+    width: 100%;
+    min-height: 80px;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    margin-bottom: 8px;
+    resize: vertical;
+}
+
+.notes-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.notes-button {
+    padding: 4px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background-color 0.2s;
+}
+
+.notes-save {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.notes-save:hover {
+    background-color: #3e8e41;
+}
+
+.notes-cancel {
+    background-color: #f44336;
+    color: white;
+}
+
+.notes-cancel:hover {
+    background-color: #d32f2f;
+}
+
+/* 통화기록 헤더 스타일 */
+.call-history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.call-history-header h3 {
+    margin: 0;
+}
+
+.add-call-record-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 18px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.add-call-record-btn:hover {
+    background-color: #45a049;
+    transform: scale(1.1);
+}
+
+.add-call-record-btn:active {
+    transform: scale(0.95);
+}
+
+.add-call-record-btn span {
+    line-height: 1;
+    display: block;
+}
+
+/* 통화기록 수기 추가 폼 스타일 */
+.manual-call-form {
+    background-color: #f5f5f5;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.manual-call-form h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #333;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #ddd;
+}
+
+.manual-call-form .form-group {
+    margin-bottom: 15px;
+}
+
+.manual-call-form label {
+    display: block;
+    margin-bottom: 5px;
+    color: #555;
+    font-weight: 500;
+    font-size: 0.9em;
+}
+
+.manual-call-form .form-control {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.2s ease;
+}
+
+.manual-call-form .form-control:focus {
+    outline: none;
+    border-color: #4CAF50;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+.manual-call-form select.form-control {
+    background-color: white;
+    cursor: pointer;
+}
+
+.manual-call-form textarea.form-control {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.manual-call-form .form-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.manual-call-form .manual-save-btn,
+.manual-call-form .manual-cancel-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.manual-call-form .manual-save-btn {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.manual-call-form .manual-save-btn:hover {
+    background-color: #45a049;
+}
+
+.manual-call-form .manual-cancel-btn {
+    background-color: #f44336;
+    color: white;
+}
+
+.manual-call-form .manual-cancel-btn:hover {
+    background-color: #d32f2f;
+}
+
+/* 통화기록에 수기입력 표시 */
+.call-record .manual-indicator {
+    display: inline-block;
+    padding: 2px 6px;
+    background-color: #e3f2fd;
+    color: #1976d2;
+    border-radius: 4px;
+    font-size: 0.8em;
+    margin-left: 8px;
+} 

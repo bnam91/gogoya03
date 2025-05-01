@@ -1,0 +1,8 @@
+node_modules/
+VERSION.txt
+.env
+**삭제예정/
+config.js
+src/js/vendor_request/token/*
+token/*
+temp/
