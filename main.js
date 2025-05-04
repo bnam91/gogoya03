@@ -289,6 +289,53 @@ ipcMain.handle('upload-influencer-data', async (event, payload) => {
         const now = new Date();
         const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+        
+        // 시트명용 날짜 형식 생성 (YYMMDD)
+        const sheetDateStr = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+
+        const spreadsheetId = '1VhEWeQASyv02knIghpcccYLgWfJCe2ylUnPsQ_-KNAI';
+        
+        // 브랜드명으로 시트 이름 생성 (특수문자 제거 및 공백을 언더스코어로 변경)
+        const cleanBrandName = brand.replace(/[^a-zA-Z0-9가-힣]/g, '_').replace(/\s+/g, '_');
+        const sheetName = `공구_${cleanBrandName}_${sheetDateStr}`;
+        
+        try {
+            // 시트 존재 여부 확인
+            await sheets.spreadsheets.values.get({
+                spreadsheetId,
+                range: `${sheetName}!A1`
+            });
+        } catch (error) {
+            // 시트가 존재하지 않는 경우 새로 생성
+            await sheets.spreadsheets.batchUpdate({
+                spreadsheetId,
+                resource: {
+                    requests: [{
+                        addSheet: {
+                            properties: {
+                                title: sheetName,
+                                gridProperties: {
+                                    rowCount: 1000,
+                                    columnCount: 8
+                                }
+                            }
+                        }
+                    }]
+                }
+            });
+
+            // 헤더 추가
+            const headers = [
+                ['url', '닉네임', '컨택 여부', '컨택 시간', '브랜드', '아이템', '시트 등록시간', '컨택 방법']
+            ];
+            
+            await sheets.spreadsheets.values.update({
+                spreadsheetId,
+                range: `${sheetName}!A1:H1`,
+                valueInputOption: 'USER_ENTERED',
+                resource: { values: headers }
+            });
+        }
 
         const values = selectedInfluencers.map(influencer => [
             `https://www.instagram.com/${influencer.username}`,
@@ -301,12 +348,11 @@ ipcMain.handle('upload-influencer-data', async (event, payload) => {
             influencer.contactMethod
         ]);
 
-        const spreadsheetId = '1VhEWeQASyv02knIghpcccYLgWfJCe2ylUnPsQ_-KNAI';
-        const range = 'contact!A2:H';
+        const appendRange = `${sheetName}!A2:H`;
 
         const response = await sheets.spreadsheets.values.append({
             spreadsheetId,
-            range,
+            range: appendRange,
             valueInputOption: 'USER_ENTERED',
             resource: { values }
         });

@@ -242,7 +242,7 @@ export class DmModal {
             uploadButton.innerHTML = originalText;
             uploadButton.disabled = false;
             
-            console.log('업로드 완료:', response.data);
+            console.log('업로드 완료');
             
         } catch (error) {
             console.error('업로드 중 오류 발생:', error);
