@@ -1,3 +1,4 @@
+// 제안서 관리 클래스
 export class ProposalManage {
     static defaultAccounts = [
         { id: "bnam91", name: "고야앤드미디어", email: "bnam91@goyamkt.com" },
@@ -587,14 +588,15 @@ export class ProposalManage {
                 }
             });
         }
+
         const sendButton = document.querySelector('.mail-button.send');
         if (sendButton) {
-            sendButton.addEventListener('click', () => {
+            sendButton.addEventListener('click', async () => {
                 console.log('보내기 버튼 클릭됨');
                 const fromSelect = document.getElementById('mail-from');
                 const toInput = document.getElementById('mail-to');
                 const subjectInput = document.getElementById('mail-subject');
-                const bodyEditor = document.querySelector('.mail-body-editor'); // 메일 본문 에디터
+                const bodyEditor = document.querySelector('.mail-body-editor');
 
                 // 필수 필드 검증
                 if (!fromSelect.value) {
@@ -616,23 +618,45 @@ export class ProposalManage {
                     createMailModal();
                     modal = document.getElementById('send-mail-modal');
                 }
-                // 닫기 버튼 이벤트 추가
+
+                // 모달에 미리보기 정보 설정
+                const previewFrom = document.getElementById('preview-from');
+                const previewTo = document.getElementById('preview-to');
+                const previewSubject = document.getElementById('preview-subject');
+                const previewContent = document.getElementById('preview-content');
+                const mailContent = document.getElementById('mail-content');
+
+                if (previewFrom) previewFrom.textContent = fromSelect.options[fromSelect.selectedIndex].text;
+                if (previewTo) previewTo.textContent = toInput.value;
+                if (previewSubject) previewSubject.textContent = subjectInput.value;
+                if (previewContent && mailContent) {
+                    previewContent.innerHTML = mailContent.value.replace(/\n/g, '<br>');
+                }
+
+                // 모달 표시
+                modal.style.display = 'block';
+                const modalContent = modal.querySelector('.modal-content');
+                if (modalContent) {
+                    modalContent.style.margin = '-5% 0 0 0%';
+                }
+
+                // 모달 버튼 이벤트 핸들러
                 const closeModal = modal.querySelector('.close-modal');
+                const cancelButton = modal.querySelector('.modal-button.cancel');
+                const confirmButton = modal.querySelector('.modal-button.confirm');
+
                 if (closeModal) {
                     closeModal.addEventListener('click', () => {
                         modal.style.display = 'none';
                     });
                 }
 
-                // 취소 버튼 이벤트 추가
-                const cancelButton = modal.querySelector('.modal-button.cancel');
                 if (cancelButton) {
                     cancelButton.addEventListener('click', () => {
                         modal.style.display = 'none';
                     });
                 }
 
-                const confirmButton = modal.querySelector('.modal-button.confirm');
                 if (confirmButton) {
                     confirmButton.addEventListener('click', async () => {
                         confirmButton.disabled = true;
@@ -642,6 +666,7 @@ export class ProposalManage {
 
                         try {
                             const accountId = this.getAccountIdFromEmail(fromSelect.value);
+                            console.log('mail accountId:', accountId);
                             if (!accountId) {
                                 throw new Error('계정 ID를 찾을 수 없습니다.');
                             }
@@ -661,46 +686,24 @@ export class ProposalManage {
                                 from: fromSelect.value,
                                 to: toInput.value,
                                 subject: subjectInput.value,
-                                body: `
-                          <div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6;">
-                            ${bodyContent}
-                            ${signature}
-                          </div>
-                        `
+                                html: `
+                                    <div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6;">
+                                        ${bodyContent}
+                                        ${signature}
+                                    </div>
+                                `
                             };
+                            console.log('mailOptions:', mailOptions);
 
-                            const credentialsPath = `token/credentials_${accountId}.js`;
-
-                            console.log('메일 전송 옵션 준비 완료:', mailOptions);
-
-                              // 1. 인증 시작
-                            await window.gmailAuthAPI.startAuth(accountId, credentialsPath);
-
-                            // 2. 인증 코드 사용자에게 입력받기
-                            // 인증 코드 받기
-                            const codeInput = document.getElementById('auth-code-input');
-                            const code = codeInput?.value.trim();
-
-                            if (!code) {
-                                alert('인증 코드를 입력해주세요.');
-                                return;
-                            }
-
-                            // 3. 코드 제출하여 토큰 저장
-                            await window.gmailAuthAPI.sendAuthCode(code, accountId);
-                            // 🔥 핵심: 메일 전송 요청
-                            const result = await window.gmailAuthAPI.sendGmail({
-                                accountId,
-                                credentialsPath,
-                                mailOptions
-                            });
-
+                            // SMTP를 통해 메일 전송
+                            const result = await window.api.sendMailWithSMTP(accountId, mailOptions);
+                            console.log('mail result:', result);
                             if (result.success) {
                                 alert('메일이 성공적으로 전송되었습니다.');
                                 this.updateSentBrandsStatus();
                                 modal.style.display = 'none';
                             } else {
-                                throw new Error('메일 전송 실패');
+                                throw new Error(result.error || '메일 전송 실패');
                             }
 
                         } catch (error) {
@@ -721,41 +724,14 @@ export class ProposalManage {
                     });
                 }
 
-
                 // 모달 외부 클릭 시 닫기
                 window.addEventListener('click', (event) => {
                     if (event.target === modal) {
                         modal.style.display = 'none';
                     }
                 });
-                //}
-
-                // 모달에 미리보기 정보 설정
-                const previewFrom = document.getElementById('preview-from');
-                const previewTo = document.getElementById('preview-to');
-                const previewSubject = document.getElementById('preview-subject');
-                const previewContent = document.getElementById('preview-content');
-
-                const mailContent = document.getElementById('mail-content');
-
-                if (previewFrom) previewFrom.textContent = fromSelect.options[fromSelect.selectedIndex].text;
-                if (previewTo) previewTo.textContent = toInput.value;
-                if (previewSubject) previewSubject.textContent = subjectInput.value;
-                if (previewContent && mailContent) {
-                    previewContent.innerHTML = mailContent.value.replace(/\n/g, '<br>');
-                }
-
-                // 모달 표시
-                modal.style.display = 'block';
-                const modalContent = modal.querySelector('.modal-content');
-                if (modalContent) {
-                    modalContent.style.margin = '-5% 0 0 0%'; // 상단 -5%, 좌측 0이 중앙 
-                }
-                console.log('모달 표시됨');
             });
         }
-
-
     }
 
     // 이메일 주소로부터 계정 ID 추출 (클래스 멤버 변수 사용)
@@ -897,10 +873,6 @@ function createMailModal() {
                                         <span class="preview-label">내용:</span>
                                         <div class="preview-value" id="preview-content"></div>
                                     </div>
-                                </div>
-                                <div class="auth-code-section">
-                                <label for="auth-code-input" style="display:block; margin: 10px 0 4px;">인증 코드</label>
-                                <input id="auth-code-input" type="text" placeholder="📩 이메일 인증 코드를 입력하세요" style="width:100%; padding: 8px;" />
                                 </div>
                             </div>
                             <div class="modal-footer">

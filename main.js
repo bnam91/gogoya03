@@ -20,6 +20,8 @@ import os from 'os';
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import { getGmailAuthUrl } from './src/gmailAuth.js';
+import { smtpAuth } from './token/smtpAuth.js';
+import nodemailer from 'nodemailer';
 let authInstance; // 전역에 저장
 // 인코딩 설정
 process.env.CHARSET = 'UTF-8';
@@ -523,6 +525,33 @@ ipcMain.handle('get-dm-records', async (event, cleanName) => {
     .toArray();
 
     return records;
+});
+
+ipcMain.handle('send-mail-with-smtp', async (event, { accountId, mailOptions }) => {
+    try {
+        const authInfo = smtpAuth.accounts.find(account => account.id === accountId);
+        console.log('authInfo:', authInfo);
+        if (!authInfo) {
+            throw new Error('SMTP 인증 정보를 찾을 수 없습니다.');
+        }
+
+        const transporter = nodemailer.createTransport({
+            host: authInfo.smtp.host,
+            port: authInfo.smtp.port,
+            secure: authInfo.smtp.secure,
+            auth: {
+                user: authInfo.smtp.auth.user,
+                pass: authInfo.smtp.auth.pass
+            }
+        });
+
+        const result = await transporter.sendMail(mailOptions);
+        console.log('result:', result);
+        return { success: true, messageId: result.messageId };
+    } catch (error) {
+        console.error('SMTP 메일 전송 오류:', error);
+        return { success: false, error: error.message };
+    }
 });
 
 // ===========================================

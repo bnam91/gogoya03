@@ -8,6 +8,7 @@ export class ScreeningManager {
         this.searchTerm = '';
         this.selectedCategories = [];
         this.selectedViews = null;
+        this.selectedPickStatus= null;
         this.data = [];
         this.filteredData = [];
         this.categories = [
@@ -194,6 +195,26 @@ export class ScreeningManager {
             });
         }
 
+        // 픽 상태 필터
+        const pickStatusSelect = document.querySelectorAll('.filter-dropdown')[2].querySelector('.filter-select');
+        const pickStatusOptions = document.querySelectorAll('.filter-dropdown')[2].querySelector('.filter-options');
+        const pickStatusRadios = document.querySelectorAll('.filter-option input[type="radio"]');
+
+        if (pickStatusSelect) {
+            // 드롭다운 토글
+            pickStatusSelect.addEventListener('click', () => {
+                pickStatusOptions.classList.toggle('show');
+            });
+
+            // 라디오 버튼 변경 이벤트
+            pickStatusRadios.forEach(radio => {
+                radio.addEventListener('change', () => {
+                    this.selectedPickStatus = radio.value;
+                    this.updateSelectedPickStatusDisplay();
+                });
+            });
+        }
+
         // 필터 적용 버튼
         const applyButton = document.getElementById('screening-apply');
         if (applyButton) {
@@ -246,6 +267,17 @@ export class ScreeningManager {
             selectedViews.textContent = selectedOption;
         } else {
             selectedViews.textContent = '릴스뷰 선택';
+        }
+    }
+
+    // 픽 상태 업데이트
+    updateSelectedPickStatusDisplay = () => {
+        const selectedPickStatus = document.querySelectorAll('.pick-filter-dropdown')[1].querySelector('.pick-selected-items');
+        if (this.selectedPickStatus) {
+            const selectedOption = document.querySelector(`input[type="radio"][value="${this.selectedPickStatus}"]`).nextElementSibling.textContent;
+            selectedPickStatus.textContent = selectedOption;
+        } else {
+            selectedPickStatus.textContent = '픽 상태 선택';
         }
     }
 
@@ -318,6 +350,14 @@ export class ScreeningManager {
                     }
                 });
             }
+
+            // 픽 상태 필터
+            if (this.selectedPickStatus) {
+                console.log("픽 상태 필터 적용");
+                console.log("this.selectedPickStatus : ", this.selectedPickStatus);
+                result = result.filter(item => item.pick_status === this.selectedPickStatus);
+            }
+
 
             this.filteredData = result;
 

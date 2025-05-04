@@ -29,7 +29,8 @@ contextBridge.exposeInMainWorld('api', {
   updateBrandVerification: (brandName, verificationStatus) => ipcRenderer.invoke('update-brand-verification', { brandName, verificationStatus }),
   fetchInfluencerDataMany: (cleanNameList) => ipcRenderer.invoke('fetch-influencer-data-many', cleanNameList),
   fetchBrandVerificationStatus: (allBrands) => ipcRenderer.invoke('fetch-brand-verification-status', allBrands),
-  getDmRecords : (cleanName) => ipcRenderer.invoke('get-dm-records', cleanName)
+  getDmRecords : (cleanName) => ipcRenderer.invoke('get-dm-records', cleanName),
+  sendMailWithSMTP: (accountId, mailOptions) => ipcRenderer.invoke('send-mail-with-smtp', { accountId, mailOptions })
 });
 
 contextBridge.exposeInMainWorld('googleSheetApi', {

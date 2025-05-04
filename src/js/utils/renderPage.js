@@ -18,17 +18,18 @@ export async function renderPage(pagePath) {
 
   // 페이지를 새로 create 해야하는 페이지
   const reCreateContentPage = [
+    'tab1/home',
     'tab2/screening'
   ];
 
   // 페이지를 숨겨야 하는 페이지
   if (!reCreateContentPage.includes(pagePath)) {
-    const existingSection = document.getElementById(contentId);
+  const existingSection = document.getElementById(contentId);
 
-    if (existingSection) {
-      existingSection.style.display = 'block';
-      updateBreadcrumbFromMenu(pagePath); // ✅ 숨겨진 페이지 다시 보여줄 때도 브레드크럼 갱신
-      return;
+  if (existingSection) {
+    existingSection.style.display = 'block';
+    updateBreadcrumbFromMenu(pagePath); // ✅ 숨겨진 페이지 다시 보여줄 때도 브레드크럼 갱신
+    return;
     }
   }
 
