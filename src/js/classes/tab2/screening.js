@@ -31,6 +31,7 @@ export class ScreeningManager {
         //console.log("MongoDB 객체:", this.mongo);
         try {
             console.log("요소들 렌더링 시작");
+            this.viewMode = 'brand';
             const container = document.getElementById('screening-content-container');
             container.innerHTML = `
             <div id="screening-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
@@ -49,8 +50,14 @@ export class ScreeningManager {
     setupEventListeners = () => {
         if (this.eventListenersAttached) return; // 이미 걸었으면 또 안 걸기
         this.eventListenersAttached = true;
-    
+
         document.addEventListener('click', (e) => {
+            console.log('clicked e.target : ', e.target);
+            // 인스타그램 링크 클릭 시 이벤트 버블링 중단
+            if (e.target.closest('a[href*="instagram.com"]')) {
+                return;
+            }
+
             const dataItem = e.target.closest('.data-item');
             if (dataItem) {
                 console.log('brand card');
@@ -58,11 +65,12 @@ export class ScreeningManager {
                 const itemName = dataItem.dataset.item;
                 this.showDetailInfo(brandName, itemName);
             }
-    
+
+            /*
             const brandCard = e.target.closest('.brand-card');
             if (brandCard) {
-                console.log('brand card');
                 const brandName = brandCard.querySelector('.brand-name');
+                console.log('clicked brandName : ', brandName);
                 if (brandName) {
                     brandName.classList.toggle('selected');
                     const brand = brandName.textContent.trim();
@@ -71,22 +79,46 @@ export class ScreeningManager {
                 }
                 brandCard.classList.toggle('selected');
             }
+            */
+
+            const brandCard = e.target.closest('.brand-card');
+            if (!brandCard) return;
+
+            const clickedBrandNameEl = brandCard.querySelector('.brand-name');
+            if (!clickedBrandNameEl) return;
+
+            const clickedBrandName = clickedBrandNameEl.textContent.trim();
+
+            // 모든 .brand-card 들을 순회
+            const allBrandCards = document.querySelectorAll('.brand-card');
+            allBrandCards.forEach(card => {
+                if (card === brandCard) return; // 클릭한 카드면 무시
+
+                const brandNameEl = card.querySelector('.brand-name');
+                if (!brandNameEl) return;
+
+                const thisBrandName = brandNameEl.textContent.trim();
+
+                if (thisBrandName === clickedBrandName) {
+                    // 동일한 brandName을 가진 다른 카드면 toggle만 적용
+                    brandNameEl.classList.toggle('selected');
+                    card.classList.toggle('selected');
+                }
+            });
+
+            // 클릭된 카드에만 update 함수 호출
+            const isSelected = clickedBrandNameEl.classList.toggle('selected');
+            brandCard.classList.toggle('selected');
+            this.updateBrandVerification(clickedBrandName, isSelected);
+
         });
     }
 
     // 브랜드 검증 상태 업데이트 함수
     updateBrandVerification = async (brandName, isSelected) => {
         try {
-            //const client = await this.mongo.getMongoClient();
-            //const db = client.db("insta09_database");
-            //const collection = db.collection("gogoya_vendor_brand_info");
-            //const result = await collection.updateOne(
-            //    { brand_name: brandName },
-            //    { $set: { is_verified: verificationStatus } }
-            //);
-            // 선택 상태에 따라 is_verified 필드 업데이트
             const verificationStatus = isSelected ? "pick" : "yet";
-
+            console.log('verificationStatus : ', verificationStatus);
             const result = await window.api.updateBrandVerification(brandName, verificationStatus);
             if (result.matchedCount === 0) {
                 console.log(`브랜드 '${brandName}'에 대한 정보를 찾을 수 없습니다.`);
@@ -250,30 +282,6 @@ export class ScreeningManager {
             if (this.selectedViews) {
                 console.log("릴스뷰 필터 적용");
                 const [min, max] = this.selectedViews.split('-').map(Number);
-                /*
-                const [min, max] = this.selectedViews.split('-').map(Number);
-
-                // 02_main_influencer_data 컬렉션에서 조회수 데이터 가져오기
-                const client = await this.mongo.getMongoClient();
-                const db = client.db("insta09_database");
-                const influencerCollection = db.collection("02_main_influencer_data");
-
-                // 각 아이템의 인플루언서 정보 가져오기
-                const itemsWithInfluencerInfo = await Promise.all(
-                    result.map(async (item) => {
-                        const cleanName = item.clean_name || item.author;
-                        const influencerData = await influencerCollection.findOne(
-                            { clean_name: cleanName },
-                            { projection: { "reels_views(15)": 1 } }
-                        );
-
-                        return {
-                            ...item,
-                            reelsViews: influencerData ? influencerData["reels_views(15)"] || 0 : 0
-                        };
-                    })
-                );
-                */
 
                 // clean_name 목록 추출
                 const cleanNames = result.map(item => item.clean_name || item.author);
@@ -462,10 +470,6 @@ export class ScreeningManager {
                 console.error("MongoDB 쿼리 오류:", err);
                 throw err;
             }
-            //} else {
-            //  console.error("getMongoClient 함수를 찾을 수 없습니다.");
-            //throw new Error("getMongoClient 함수를 찾을 수 없습니다.");
-            //}
         } catch (error) {
             console.error('MongoDB 데이터 로드 중 오류:', error);
             this.loadFallbackData();
@@ -626,6 +630,10 @@ export class ScreeningManager {
         const influencerList = await window.api.fetchInfluencerDataMany(uniqueNames);
         const influencerMap = new Map(influencerList.map(doc => [doc.clean_name, doc]));
 
+        // 브랜드 검증 정보 일괄 로드
+        const allBrands = [...new Set(Object.values(groupedByBrand).flat().map(item => item.brand))];
+        const brandVerificationMap = await window.api.fetchBrandVerificationStatus(allBrands);
+
         const brandList = Object.entries(groupedByBrand).map(([brand, items]) => {
             const enrichedItems = items.map(item => {
                 const cleanName = item.clean_name || item.author;
@@ -633,13 +641,15 @@ export class ScreeningManager {
                 return {
                     ...item,
                     reelsViews: influencer ? influencer["reels_views(15)"] || 0 : 0,
-                    grade: influencer ? influencer.grade || 'N/A' : 'N/A'
+                    grade: influencer ? influencer.grade || 'N/A' : 'N/A',
+                    isVerifiedBrand: brandVerificationMap.get(brand) === "pick"
                 };
             });
 
             return {
                 brand,
-                items: enrichedItems
+                items: enrichedItems,
+                isVerifiedBrand: brandVerificationMap.get(brand) === "pick"
             };
         });
 
@@ -648,10 +658,10 @@ export class ScreeningManager {
 
     // 브랜드 카드 HTML 렌더링 (start~end 범위)
     renderBrandCards = (brandList, start, end) => {
-        return brandList.slice(start, end).map(({ brand, items }) => `
-                <div class="bg-white rounded-lg shadow-md p-4 overflow-hidden">
+        return brandList.slice(start, end).map(({ brand, items, isVerifiedBrand }) => `
+                <div class="bg-white rounded-lg shadow-md p-4 overflow-hidden brand-card ${isVerifiedBrand ? 'selected' : ''}">
                     <div class="flex items-center mb-3 pb-2 border-b border-gray-200">
-                        <h3 class="text-lg font-semibold truncate">${brand}</h3>
+                        <h3 class="text-lg font-semibold truncate brand-name ${isVerifiedBrand ? 'selected' : ''}" style="cursor: pointer;order: 0;">${brand}</h3>
                         <span class="ml-auto bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded">
                             ${items.length}
                         </span>
@@ -725,6 +735,11 @@ export class ScreeningManager {
         const influencerList = await window.api.fetchInfluencerDataMany(uniqueNames);
         const influencerMap = new Map(influencerList.map(doc => [doc.clean_name, doc]));
 
+        // 브랜드 검증 정보 일괄 로드
+        const allBrands = [...new Set(Object.values(groupedByItem).flat().map(item => item.brand))];
+        const brandVerificationMap = await window.api.fetchBrandVerificationStatus(allBrands);
+
+
         // 상품별 products 가공
         const allItems = Object.keys(groupedByItem).map(item => {
             const products = groupedByItem[item].map(product => {
@@ -733,6 +748,7 @@ export class ScreeningManager {
 
                 return {
                     ...product,
+                    isVerifiedBrand: brandVerificationMap.get(product.brand) === "pick",
                     reelsViews: influencer?.["reels_views(15)"] ?? 0,
                     grade: influencer?.grade ?? 'N/A'
                 };
@@ -744,7 +760,7 @@ export class ScreeningManager {
         return allItems;
     }
 
-
+    //상품별 카드
     renderItemCards = (list, start, end) => {
         return list.slice(start, end).map(({ item, products }) => `
             <div class="bg-white rounded-lg shadow-md p-4 overflow-hidden">
@@ -756,12 +772,12 @@ export class ScreeningManager {
                 </div>
                 <div class="overflow-y-auto max-h-64">
                     ${products.map(product => `
-                        <div class="mb-3 pb-2 border-b border-gray-100 last:border-0 ">
+                        <div class="mb-3 pb-2 border-b border-gray-100 last:border-0 brand-card ${product.isVerifiedBrand ? 'selected' : ''}">
                             <div class="flex items-center">
-                                <p class="text-sm font-medium">${product.brand}</p>
+                                <p class="text-sm font-medium brand-name ${product.isVerifiedBrand ? 'selected' : ''}">${product.brand}</p>
                             </div>
                             <div class="flex items-center mt-1">
-                                <p class="text-sm text-gray-600">${product.clean_name || product.author}</p>
+                                <p class="text-sm text-gray-600 ">${product.clean_name || product.author}</p>
                                 <span class="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded">
                                     조회수: ${(product.reelsViews || 0).toLocaleString()}
                                 </span>
@@ -807,35 +823,47 @@ export class ScreeningManager {
             console.error('❌ prepareInfluencerList: 잘못된 groupedByInfluencer');
             return [];
         }
-    
+
         try {
             // 전체 clean_name 목록 수집
             const allNames = Object.values(groupedByInfluencer).flat().map(item => item.clean_name || item.author);
             const uniqueNames = [...new Set(allNames)];
-    
+
             // 인플루언서 정보 일괄 로드
             const rawList = await window.api.fetchInfluencerDataMany(uniqueNames);
             const influencerDataMap = new Map(rawList.map(doc => [doc.clean_name, doc]));
-    
+
             // 브랜드 검증 정보 일괄 로드
             const allBrands = [...new Set(Object.values(groupedByInfluencer).flat().map(item => item.brand))];
             const brandVerificationMap = await window.api.fetchBrandVerificationStatus(allBrands);
-    
+            console.log('brandVerificationMap', brandVerificationMap);
+            console.log('brandVerificationMap type:', typeof brandVerificationMap);
+            console.log('brandVerificationMap keys:', Object.keys(brandVerificationMap));
+            console.log('brandVerificationMap entries:', Object.entries(brandVerificationMap));
+
+            console.log('brandVerificationMap.get(쏘랩)', brandVerificationMap.get("쏘랩"));
+            console.log('brandVerificationMap.get(켄트로얄)', brandVerificationMap.get("켄트로얄"));
+
             // 인플루언서별로 정리
             const sortedInfluencers = Object.entries(groupedByInfluencer).map(([influencer, items]) => {
                 const enrichedItems = items.map(item => {
                     const cleanName = item.clean_name || item.author;
                     const data = influencerDataMap.get(cleanName) || {};
-    
+
+                    if (cleanName === '꿀양') {
+                        console.log('cleanName:', cleanName)
+                        console.log('item.brand:', item.brand);
+                        console.log('isVerifiedBrand:', brandVerificationMap.get(item.brand));
+                    }
                     return {
                         ...item,
                         cleanName,
                         reelsViews: data["reels_views(15)"] || 0,
                         grade: data.grade || 'N/A',
-                        isVerifiedBrand: brandVerificationMap[item.brand] || false
+                        isVerifiedBrand: brandVerificationMap.get(item.brand) === "pick" // Map.get() 사용
                     };
                 });
-    
+
                 return {
                     influencer,                           // 인플루언서명 (author)
                     cleanName: enrichedItems[0]?.cleanName || influencer,
@@ -844,10 +872,10 @@ export class ScreeningManager {
                     items: enrichedItems                  // products 목록
                 };
             });
-    
+
             // 조회수 기준 내림차순 정렬
             sortedInfluencers.sort((a, b) => b.reelsViews - a.reelsViews);
-    
+
             return sortedInfluencers;
         } catch (error) {
             console.error('❌ prepareInfluencerList error:', error);
@@ -859,7 +887,6 @@ export class ScreeningManager {
     renderInfluencerCards = (list, start, end) => {
         return list.slice(start, end).map(({ influencer, cleanName, reelsViews, grade, items = [] }) => {
             const firstItem = Array.isArray(items) ? items[0] || {} : {};
-    
             return `
                 <div class="bg-white rounded-lg shadow-md p-4 overflow-hidden">
                     <div class="flex items-center mb-3 pb-2 border-b border-gray-200">
@@ -877,19 +904,21 @@ export class ScreeningManager {
                                 <span class="bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded">
                                     등급: ${grade || 'N/A'}
                                 </span>
+                                <span class="ml-auto bg-purple-100 text-purple-800 text-xs font-medium px-2 py-0.5 rounded">
+                                    ${items.length}
+                                </span>
                             </div>
                         </div>
                     </div>
     
                     <div class="overflow-y-auto max-h-64">
-                        ${
-                            Array.isArray(items) && items.length > 0
-                            ? items.map(product => `
-                                <div class="mb-3 pb-2 border-b border-gray-100 last:border-0 brand-card" >
-                                    <div class="text-sm font-medium text-gray-900">${product.brand || '-'}</div>
+                        ${Array.isArray(items) && items.length > 0
+                    ? items.map(product => `
+                                <div class="mb-3 pb-2 border-b border-gray-100 last:border-0 brand-card ${product.isVerifiedBrand ? 'selected' : ''}">
+                                    <div class="text-sm font-medium text-gray-900 brand-name ${product.isVerifiedBrand ? 'selected' : ''}">${product.brand || '-'}</div>
                                     <div class="flex items-center mt-1">
-                                        <p class="text-sm text-gray-600">${product.clean_name || product.author || '-'}</p>
-                                        <a href="${product.item_feed_link}" target="_blank" rel="noopener noreferrer" class="ml-2 text-pink-500 hover:text-pink-700">
+                                        <p class="text-sm text-gray-600">${product.item || '-'}</p>
+                                        <a href="${product.item_feed_link}" target="_blank" rel="noopener noreferrer" class="ml-auto text-pink-500 hover:text-pink-700">
                                             <i class="fab fa-instagram"></i>
                                         </a>
                                     </div>
@@ -898,14 +927,14 @@ export class ScreeningManager {
                                     </div>
                                 </div>
                             `).join('')
-                            : '<div class="text-gray-400 text-sm">등록된 상품 없음</div>'
-                        }
+                    : '<div class="text-gray-400 text-sm">등록된 상품 없음</div>'
+                }
                     </div>
                 </div>
             `;
         }).join('');
     }
-    
+
 
     // 인플루언서별 뷰 렌더링 (무한스크롤 지원)
     renderInfluencerView = async (influencerDataList) => {
@@ -924,351 +953,6 @@ export class ScreeningManager {
         this.renderNextBatch();
         this.initIntersectionObserver();
         return '';
-    }
-
-    
-
-    //-------------------------------------------------------------ㅋ
-    // 구버전
-    // 브랜드별 뷰 렌더링
-    renderBrandView = async (groupedByBrand, tmp) => {
-        try {
-            // 각 브랜드별 아이템 처리
-            /*
-            const itemsWithInfluencerInfo = await Promise.all(
-                Object.keys(groupedByBrand).map(async (brand) => {
-                    const items = await Promise.all(
-                        groupedByBrand[brand].map(async (item) => {
-                            const cleanName = item.clean_name || item.author;
-
-                            // ✅ IPC를 통해 메인 프로세스에서 인플루언서 데이터 가져오기
-                            const influencerData = await window.api.fetchInfluencerData(cleanName);
-
-                            return {
-                                ...item,
-                                reelsViews: influencerData ? influencerData["reels_views(15)"] || 0 : 0,
-                                grade: influencerData ? influencerData.grade || 'N/A' : 'N/A'
-                            };
-                        })
-                    );
-                    return { brand, items };
-                })
-            );
-            */
-
-            // 전체 clean_name 목록 수집
-            const allNames = Object.values(groupedByBrand).flat().map(item => item.clean_name || item.author);
-            const uniqueNames = [...new Set(allNames)];
-
-            // IPC로 한번에 인플루언서 정보 가져오기
-            const influencerList = await window.api.fetchInfluencerDataMany(uniqueNames);
-            const influencerMap = new Map(
-                influencerList.map(doc => [doc.clean_name, doc])
-            );
-
-            // 각 브랜드별 아이템에 인플루언서 정보 매핑
-            const itemsWithInfluencerInfo = Object.keys(groupedByBrand).map(brand => {
-                const items = groupedByBrand[brand].map(item => {
-                    const cleanName = item.clean_name || item.author;
-                    const influencerData = influencerMap.get(cleanName);
-
-                    return {
-                        ...item,
-                        reelsViews: influencerData ? influencerData["reels_views(15)"] || 0 : 0,
-                        grade: influencerData ? influencerData.grade || 'N/A' : 'N/A'
-                    };
-                });
-                return { brand, items };
-            });
-
-            return `
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    ${itemsWithInfluencerInfo.map(({ brand, items }) => `
-                    <div class="bg-white rounded-lg shadow-md p-4 overflow-hidden">
-                        <div class="flex items-center mb-3 pb-2 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold truncate">${brand}</h3>
-                            <span class="ml-auto bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded">
-                                    ${items.length}
-                            </span>
-                        </div>
-                        <div class="overflow-y-auto max-h-64">
-                                ${items.map(item => `
-                                <div class="mb-3 pb-2 border-b border-gray-100 last:border-0">
-                                    <div class="flex items-center">
-                                        <p class="text-sm font-medium">${item.item}</p>
-                                    </div>
-                                    <div class="flex items-center mt-1">
-                                        <p class="text-sm text-gray-600">
-                                            ${item.clean_name || item.author}
-                                        </p>
-                                            <span class="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded">
-                                                조회수: ${item.reelsViews.toLocaleString()}
-                                            </span>
-                                            <span class="ml-2 bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded">
-                                                등급: ${item.grade}
-                                            </span>
-                                        <a 
-                                            href="${item.item_feed_link}" 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            class="ml-auto text-pink-500 hover:text-pink-700"
-                                        >
-                                            <i class="fab fa-instagram"></i>
-                                        </a>
-                                    </div>
-                                    <p class="text-xs text-gray-500 mt-1">
-                                        ${this.formatDate(item.crawl_date)}
-                                    </p>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-        } catch (error) {
-            console.error('브랜드별 뷰 렌더링 중 오류:', error);
-            return this.renderBrandViewFallback(groupedByBrand);
-        }
-    }
-
-    // 상품별 뷰 렌더링
-    renderItemView = async (groupedByItem, tmp) => {
-        try {
-            // 단건씩 조회
-            /*
-            // 각 브랜드별 아이템 처리
-            const itemsWithInfluencerInfo = await Promise.all(
-                Object.keys(groupedByItem).map(async (item) => {
-                    const products = await Promise.all(
-                        groupedByItem[item].map(async (product) => {
-                            const cleanName = product.clean_name || product.author;
-                            const influencerData = await window.api.fetchInfluencerData(cleanName);
-
-                            return {
-                                ...product,
-                                reelsViews: influencerData ? influencerData["reels_views(15)"] || 0 : 0,
-                                grade: influencerData ? influencerData.grade || 'N/A' : 'N/A'
-                            };
-                        })
-                    );
-
-                    return { item, products };
-                })
-            );
-            */
-
-
-            // 전체 clean_name 목록 수집
-            const allNames = Object.values(groupedByItem).flat().map(item => item.clean_name || item.author);
-            const uniqueNames = [...new Set(allNames)];
-
-            // IPC로 한번에 인플루언서 정보 가져오기
-            const influencerList = await window.api.fetchInfluencerDataMany(uniqueNames);
-            const influencerMap = new Map(
-                influencerList.map(doc => [doc.clean_name, doc])
-            );
-
-            // 각 상품별로 인플루언서 정보 매핑
-            const itemsWithInfluencerInfo = Object.keys(groupedByItem).map(item => {
-                const products = groupedByItem[item].map(product => {
-                    const cleanName = product.clean_name || product.author;
-                    const influencer = influencerMap.get(cleanName);
-
-                    return {
-                        ...product,
-                        reelsViews: influencer ? influencer["reels_views(15)"] || 0 : 0,
-                        grade: influencer ? influencer.grade || 'N/A' : 'N/A'
-                    };
-                });
-                return { item, products };
-            });
-
-            return `
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    ${itemsWithInfluencerInfo.map(({ item, products }) => `
-                    <div class="bg-white rounded-lg shadow-md p-4 overflow-hidden">
-                        <div class="flex items-center mb-3 pb-2 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold truncate">${item}</h3>
-                            <span class="ml-auto bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded">
-                                    ${products.length}
-                            </span>
-                        </div>
-                        <div class="overflow-y-auto max-h-64">
-                                ${products.map(product => `
-                                <div class="mb-3 pb-2 border-b border-gray-100 last:border-0">
-                                    <div class="flex items-center">
-                                        <p class="text-sm font-medium">${product.brand}</p>
-                                    </div>
-                                    <div class="flex items-center mt-1">
-                                        <p class="text-sm text-gray-600">
-                                            ${product.clean_name || product.author}
-                                        </p>
-                                            <span class="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded">
-                                                조회수: ${product.reelsViews.toLocaleString()}
-                                            </span>
-                                            <span class="ml-2 bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded">
-                                                등급: ${product.grade}
-                                            </span>
-                                        <a 
-                                            href="${product.item_feed_link}" 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            class="ml-auto text-pink-500 hover:text-pink-700"
-                                        >
-                                            <i class="fab fa-instagram"></i>
-                                        </a>
-                                    </div>
-                                    <p class="text-xs text-gray-500 mt-1">
-                                        ${this.formatDate(product.crawl_date)}
-                                    </p>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-        } catch (error) {
-            console.error('상품별 뷰 렌더링 중 오류:', error);
-            return this.renderItemViewFallback(groupedByItem);
-        }
-    }
-
-    // 인플루언서별 뷰 렌더링
-    renderInfluencerView = async (groupedByInfluencer, tmp) => {
-        try {
-
-            /*
-            // 각 브랜드별 아이템 처리
-            const sortedInfluencers = await Promise.all(
-                Object.keys(groupedByInfluencer).map(async (influencer) => {
-                    const items = await Promise.all(
-                        groupedByInfluencer[influencer].map(async (item) => {
-                            const cleanName = item.clean_name || item.author;
-                            const influencerData = await window.api.fetchInfluencerData(cleanName);
-
-                            return {
-                                ...item,
-                                reelsViews: influencerData ? influencerData["reels_views(15)"] || 0 : 0,
-                                grade: influencerData ? influencerData.grade || 'N/A' : 'N/A'
-                            };
-                        })
-                    );
-
-                    return {
-                        influencer,
-                        items,
-                        cleanName: items[0]?.clean_name || influencer,
-                        reelsViews: items[0]?.reelsViews || 0,
-                        grade: items[0]?.grade || 'N/A'
-                    };
-                })
-            );
-
-            // reels_views(15) 기준으로 내림차순 정렬
-            sortedInfluencers.sort((a, b) => b.reelsViews - a.reelsViews);
-
-            // 모든 브랜드의 is_verified 상태를 한 번에 가져오기
-            const allBrands = [...new Set(Object.values(groupedByInfluencer).flat().map(item => item.brand))];
-            const brandVerificationMap = await window.api.fetchBrandVerificationStatus(allBrands);
-            */
-
-            // 전체 clean_name 목록 수집
-            const allNames = Object.values(groupedByInfluencer).flat().map(item => item.clean_name || item.author);
-            const uniqueNames = [...new Set(allNames)];
-
-            // 인플루언서 정보 일괄 로드
-            const rawList = await window.api.fetchInfluencerDataMany(uniqueNames);
-            const influencerDataMap = new Map(rawList.map(doc => [doc.clean_name, doc]));
-
-            // 브랜드 검증 정보 일괄 로드
-            const allBrands = [...new Set(Object.values(groupedByInfluencer).flat().map(item => item.brand))];
-            const brandVerificationMap = await window.api.fetchBrandVerificationStatus(allBrands);
-
-            // 인플루언서별로 정리
-            const sortedInfluencers = Object.entries(groupedByInfluencer).map(([influencer, items]) => {
-                const enrichedItems = items.map(item => {
-                    const cleanName = item.clean_name || item.author;
-                    const data = influencerDataMap.get(cleanName) || {};
-                    return {
-                        ...item,
-                        cleanName,
-                        reelsViews: data["reels_views(15)"] || 0,
-                        grade: data.grade || 'N/A'
-                    };
-                });
-
-                return {
-                    influencer,
-                    cleanName: enrichedItems[0]?.cleanName || influencer,
-                    reelsViews: enrichedItems[0]?.reelsViews || 0,
-                    grade: enrichedItems[0]?.grade || 'N/A',
-                    items: enrichedItems
-                };
-            });
-
-            sortedInfluencers.sort((a, b) => b.reelsViews - a.reelsViews);
-
-            return `
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    ${sortedInfluencers.map(({ influencer, cleanName, reelsViews, grade }) => `
-                        <div class="bg-white rounded-lg shadow-md p-4 overflow-hidden">
-                            <div class="flex items-center mb-3 pb-2 border-b border-gray-200">
-                                <h3 class="text-lg font-semibold truncate">
-                                    ${cleanName}
-                                </h3>
-                                <a 
-                                    href="https://www.instagram.com/${influencer}" 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    class="ml-2 text-pink-500 hover:text-pink-700"
-                                >
-                                    <i class="fab fa-instagram"></i>
-                                </a>
-                                <span class="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded">
-                                    조회수: ${reelsViews.toLocaleString()}
-                                </span>
-                                <span class="ml-2 bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded">
-                                    등급: ${grade}
-                                </span>
-                                <span class="ml-auto bg-purple-100 text-purple-800 text-xs font-medium px-2 py-0.5 rounded">
-                                    ${groupedByInfluencer[influencer].length}
-                                </span>
-                            </div>
-                            <div class="overflow-y-auto max-h-64">
-                                ${groupedByInfluencer[influencer].map(promo => {
-                                    const isSelected = brandVerificationMap.get(promo.brand) === "pick";
-                                    return `
-                                    <div class="mb-3 pb-2 border-b border-gray-100 last:border-0 brand-card ${isSelected ? 'selected' : ''}">
-                                        <div class="flex items-center">
-                                            <p class="text-sm font-medium brand-name ${isSelected ? 'selected' : ''}" style="cursor: pointer;">${promo.brand}</p>
-                                        </div>
-                                        <div class="flex items-center mt-1">
-                                            <p class="text-sm text-gray-600">${promo.item}</p>
-                                            <a 
-                                                href="${promo.item_feed_link}" 
-                                                target="_blank" 
-                                                rel="noopener noreferrer"
-                                                class="ml-auto text-pink-500 hover:text-pink-700"
-                                            >
-                                                <i class="fab fa-instagram"></i>
-                                            </a>
-                                        </div>
-                                        <p class="text-xs text-gray-500 mt-1">
-                                            ${this.formatDate(promo.crawl_date)}
-                                        </p>
-                                    </div>
-                                `}).join('')}
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-        } catch (error) {
-            console.error('인플루언서 데이터 정렬 중 오류:', error);
-            return this.renderInfluencerViewFallback(groupedByInfluencer);
-        }
     }
 
     // 정렬 실패 시 기본 렌더링

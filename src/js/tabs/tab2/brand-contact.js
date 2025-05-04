@@ -20,11 +20,11 @@ export function initPage() {
     selectedCardIndex = -1;
     cardData = []; // 데이터 초기화
     loadBrandContactData(true);
+
     
-    const brandContactLeft = document.querySelector('.brand-contact-left');
-    console.log('brandContactLeft', brandContactLeft);
-    brandContactLeft.addEventListener('scroll', handleScroll);
-    
+    const dataList = document.getElementById('brand-contact-data-list');
+    dataList.addEventListener('scroll', handleScroll);
+
     // 우측 패널 초기화
     const rightPanel = document.querySelector('.brand-contact-right');
     rightPanel.innerHTML = '<p>카드를 선택하면 브랜드 정보가 표시됩니다.</p>';
@@ -62,13 +62,13 @@ window.brandContact = {
 function updateCallDuration() {
     console.log('updateCallDuration');
     if (!brandContactCallManager.callStartTime || !brandContactCallManager.isCalling) return;
-    
+
     const now = new Date();
     const duration = Math.floor((now - brandContactCallManager.callStartTime) / 1000);
     const hours = Math.floor(duration / 3600);
     const minutes = Math.floor((duration % 3600) / 60);
     const seconds = duration % 60;
-    
+
     const durationElement = document.querySelector('.call-duration');
     if (durationElement) {
         durationElement.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
@@ -85,22 +85,22 @@ async function handleCall(phoneNumber) {
             const modal = document.getElementById('call-confirm-modal');
             const phoneNumberElement = modal.querySelector('.phone-number');
             phoneNumberElement.textContent = phoneNumber;
-            
+
             // 모달창 표시
             modal.style.display = 'block';
-            
+
             // 모달창 버튼 이벤트 리스너
             return new Promise((resolve) => {
                 const confirmButton = modal.querySelector('.modal-button.confirm');
                 const cancelButton = modal.querySelector('.modal-button.cancel');
-                
+
                 const handleConfirm = async () => {
                     modal.style.display = 'none';
-                    
+
                     try {
                         brandContactCallManager.setCurrentBrandData(currentBrandData);
                         await brandContactCallManager.startCall(phoneNumber);
-                        
+
                         // 통화 상태 폼 표시
                         const callForm = document.createElement('div');
                         callForm.className = 'call-status-form';
@@ -143,12 +143,12 @@ async function handleCall(phoneNumber) {
                                 </div>
                             </div>
                         `;
-                        
+
                         // 추가 정보 영역에 통화 상태 폼 추가
                         const extraContent = document.querySelector('.extra-content');
                         extraContent.innerHTML = ''; // 기존 내용 제거
                         extraContent.appendChild(callForm);
-                        
+
                         // 통화 종료 버튼 이벤트 리스너
                         const endCallButton = callForm.querySelector('.end-call-button');
                         endCallButton.onclick = async () => {
@@ -160,38 +160,38 @@ async function handleCall(phoneNumber) {
                                     callButton.textContent = '통화하기';
                                     callButton.classList.remove('end-call');
                                 }
-                                
+
                                 // 통화 종료 후 메모 입력 활성화
                                 const callNotes = document.getElementById('call-notes');
                                 if (callNotes) {
                                     callNotes.disabled = false;
                                     callNotes.focus();
                                 }
-                                
+
                                 // 저장과 취소 버튼 표시
                                 const saveButton = callForm.querySelector('.save-button');
                                 const cancelButton = callForm.querySelector('.cancel-button');
                                 if (saveButton) saveButton.style.display = 'inline-block';
                                 if (cancelButton) cancelButton.style.display = 'inline-block';
-                                
+
                                 // 통화 종료 버튼 숨기기
                                 endCallButton.style.display = 'none';
                             }
                         };
-                        
+
                         // 저장 버튼 이벤트 리스너
                         const saveButton = callForm.querySelector('.save-button');
                         saveButton.onclick = async () => {
                             const callStatus = document.getElementById('call-status').value;
                             const nextStep = document.getElementById('next-step').value;
                             const notes = document.getElementById('call-notes').value;
-                            
+
                             // 필수 값 검증
                             if (!callStatus || !nextStep) {
                                 alert('통화 상태와 다음 단계를 선택해주세요.');
                                 return;
                             }
-                            
+
                             try {
                                 await saveCallRecord();
                             } catch (error) {
@@ -199,7 +199,7 @@ async function handleCall(phoneNumber) {
                                 alert('통화 기록 저장 중 오류가 발생했습니다.');
                             }
                         };
-                        
+
                         // 취소 버튼 이벤트 리스너
                         const cancelButton = callForm.querySelector('.cancel-button');
                         cancelButton.onclick = () => {
@@ -210,7 +210,7 @@ async function handleCall(phoneNumber) {
                                 <p>여기에 추가 정보가 표시됩니다.</p>
                             `;
                         };
-                        
+
                         resolve(true);
                     } catch (error) {
                         console.error('전화 연결 중 오류:', error);
@@ -218,12 +218,12 @@ async function handleCall(phoneNumber) {
                         resolve(false);
                     }
                 };
-                
+
                 const handleCancel = () => {
                     modal.style.display = 'none';
                     resolve(false);
                 };
-                
+
                 confirmButton.onclick = handleConfirm;
                 cancelButton.onclick = handleCancel;
             });
@@ -276,23 +276,23 @@ async function updateCardCallStatus(recordId, newNextStep) {
             await brandContactCallHistory.updateCardNextStep(recordId, newNextStep);
             return;
         }
-        
+
         // 기존 코드 (이전 버전 호환성을 위해 유지)
         // 해당 기록 조회
         //const record = await mongo.getCallRecordById(recordId);
         const record = await window.api.fetchgetCallRecordById(recordId);
         if (!record || !record.card_id) return;
-        
+
         // 선택된 카드 찾기
-        const selectedCard = document.querySelector(`.card[data-id="${record.card_id}"]`) || 
-                            document.querySelector('.card.selected');
-        
+        const selectedCard = document.querySelector(`.card[data-id="${record.card_id}"]`) ||
+            document.querySelector('.card.selected');
+
         if (selectedCard) {
             const callStatusElement = selectedCard.querySelector('.call-status');
             if (callStatusElement) {
                 // 기존 다음 단계 요소 찾기
                 const nextStepElement = callStatusElement.querySelector('.next-step-value');
-                
+
                 if (nextStepElement) {
                     // 있으면 업데이트
                     nextStepElement.textContent = newNextStep;
@@ -316,7 +316,7 @@ async function updateBrandInfoPanel(item) {
     console.log('updateRightPanel');
     const rightPanel = document.querySelector('.brand-contact-right');
     const extraContent = document.querySelector('.extra-content');
-    
+
     if (!item) {
         rightPanel.innerHTML = '<p>브랜드 정보가 없습니다.</p>';
         extraContent.innerHTML = '<h3>통화 기록</h3><p>카드를 선택하면 통화 기록이 표시됩니다.</p>';
@@ -331,7 +331,7 @@ async function updateBrandInfoPanel(item) {
         const brandName = item.brand;
         //const brandPhoneData = await mongo.getBrandPhoneData(brandName);
         const brandPhoneData = await window.api.fetchBrandPhoneData(brandName);
-        
+
         // 현재 브랜드 데이터 저장
         currentBrandData = {
             ...brandPhoneData,
@@ -344,7 +344,7 @@ async function updateBrandInfoPanel(item) {
 
         // brandContactInfoEditor에 현재 브랜드 데이터 설정
         brandContactInfoEditor.setCurrentBrandData(currentBrandData);
-        
+
         if (!brandPhoneData) {
             rightPanel.innerHTML = `
                 <div class="brand-info-header">
@@ -360,11 +360,11 @@ async function updateBrandInfoPanel(item) {
             <div class="brand-info-container">
                 <div class="brand-info-header">
                     <h3>${brandName}</h3>
-                    ${brandPhoneData.screenshot ? 
-                        `<div class="brand-screenshot">
+                    ${brandPhoneData.screenshot ?
+                `<div class="brand-screenshot">
                             <img src="${brandPhoneData.screenshot}" alt="${brandName} 스크린샷">
                         </div>` : ''
-                    }
+            }
                 </div>
 
                 <div class="brand-info-grid">
@@ -385,13 +385,13 @@ async function updateBrandInfoPanel(item) {
                             </div>
                             <div class="info-item">
                                 <label>인증 여부</label>
-                                <span class="verification-status editable" data-status="${brandPhoneData.is_verified}">${
-                                    brandPhoneData.is_verified === 'true' ? '<span class="status-badge verified">인증완료</span>' :
-                                    brandPhoneData.is_verified === 'false' ? '<span class="status-badge unverified">미인증</span>' :
-                                    brandPhoneData.is_verified === 'yet' ? '<span class="status-badge pending">대기중</span>' :
-                                    brandPhoneData.is_verified === 'skip' ? '<span class="status-badge skip">스킵</span>' :
-                                    '<span class="status-badge unknown">알 수 없음</span>'
-                                }</span>
+                                <span class="verification-status editable" data-status="${brandPhoneData.is_verified}">${brandPhoneData.is_verified === 'true' ? '<span class="status-badge verified">인증완료</span>' :
+                brandPhoneData.is_verified === 'false' ? '<span class="status-badge unverified">미인증</span>' :
+                    brandPhoneData.is_verified === 'yet' ? '<span class="status-badge pending">대기중</span>' :
+                        brandPhoneData.is_verified === 'skip' ? '<span class="status-badge skip">스킵</span>' :
+                            brandPhoneData.is_verified === 'pick' ? '<span class="status-badge pick">후보컨택</span>' :
+                                '<span class="status-badge unknown">알 수 없음</span>'
+            }</span>
                             </div>
                         </div>
                     </div>
@@ -462,7 +462,7 @@ async function updateBrandInfoPanel(item) {
                 </div>
             </div>
         `;
-        
+
         rightPanel.innerHTML = html;
 
         // 통화하기 버튼 이벤트 리스너 추가
@@ -492,18 +492,20 @@ async function updateBrandInfoPanel(item) {
             verificationStatus.addEventListener('click', async () => {
                 const currentStatus = brandPhoneData.is_verified;
                 let newStatus;
-                
-                // 상태 순환: 'yet' -> 'true' -> 'false' -> 'skip' -> 'yet'
+
+                // 상태 순환: 'yet' -> 'true' -> 'false' -> 'skip' -> 'pick' -> 'yet'
                 if (currentStatus === 'yet') {
                     newStatus = 'true';
                 } else if (currentStatus === 'true') {
                     newStatus = 'false';
                 } else if (currentStatus === 'false') {
                     newStatus = 'skip';
+                } else if (currentStatus === 'skip') {
+                    newStatus = 'pick';
                 } else {
                     newStatus = 'yet';
                 }
-                
+
                 try {
                     // MongoDB 업데이트
                     //await mongo.updateBrandInfo(brandPhoneData.brand_name, {
@@ -512,17 +514,18 @@ async function updateBrandInfoPanel(item) {
                     await window.api.updateBrandInfo(brandPhoneData.brand_name, {
                         is_verified: newStatus
                     });
-                    
+
                     // UI 업데이트
                     brandPhoneData.is_verified = newStatus;
                     verificationStatus.setAttribute('data-status', newStatus);
-                    verificationStatus.innerHTML = 
+                    verificationStatus.innerHTML =
                         newStatus === 'true' ? '<span class="status-badge verified">인증완료</span>' :
-                        newStatus === 'false' ? '<span class="status-badge unverified">미인증</span>' :
-                        newStatus === 'yet' ? '<span class="status-badge pending">대기중</span>' :
-                        newStatus === 'skip' ? '<span class="status-badge skip">스킵</span>' :
-                        '<span class="status-badge unknown">알 수 없음</span>';
-                    
+                            newStatus === 'false' ? '<span class="status-badge unverified">미인증</span>' :
+                                newStatus === 'yet' ? '<span class="status-badge pending">대기중</span>' :
+                                    newStatus === 'skip' ? '<span class="status-badge skip">스킵</span>' :
+                                        newStatus === 'pick' ? '<span class="status-badge pick">후보컨택</span>' :
+                                            '<span class="status-badge unknown">알 수 없음</span>';
+
                     // 성공 메시지 표시
                     // 기존 토스트 제거
                     const existingToast = document.querySelector('.toast-message');
@@ -538,20 +541,20 @@ async function updateBrandInfoPanel(item) {
                         <span class="toast-text">인증 상태가 업데이트되었습니다.</span>
                     `;
                     document.body.appendChild(toast);
-                    
+
                     // 3초 후 토스트 메시지 제거
                     setTimeout(() => {
                         toast.classList.add('fade-out');
                         setTimeout(() => toast.remove(), 300);
                     }, 3000);
-                    
+
                 } catch (error) {
                     console.error('인증 상태 업데이트 중 오류:', error);
                     alert('인증 상태 업데이트 중 오류가 발생했습니다.');
                 }
             });
         }
-        
+
     } catch (error) {
         console.error('브랜드 정보 로드 중 오류:', error);
         rightPanel.innerHTML = '<p>브랜드 정보를 불러오는 중 오류가 발생했습니다.</p>';
@@ -576,14 +579,14 @@ async function selectCard(index) {
     // 기존 카드 선택 해제
     const cards = document.querySelectorAll('.card');
     cards.forEach(card => card.classList.remove('selected'));
-    
+
     // 새 카드 선택
     if (index >= 0 && index < cardData.length) {
         const selectedCard = cards[index];
         selectedCard.classList.add('selected');
         selectedCardIndex = index;
         currentBrandData = cardData[index];
-        
+
         // 우측 패널 업데이트
         //await updateRightPanel(currentBrandData);
         await updateBrandInfoPanel(currentBrandData);
@@ -594,18 +597,18 @@ async function selectCard(index) {
 document.addEventListener('keydown', async (event) => {
     console.log('keydown', event);
     const modal = document.getElementById('call-confirm-modal');
-    
+
     // ESC 키로 모달창 닫기
     if (event.key === 'Escape' && modal.style.display === 'block') {
         modal.style.display = 'none';
         return;
     }
-    
+
     // Ctrl + 스페이스바로 통화하기
     if (event.key === ' ' && event.ctrlKey && selectedCardIndex !== -1) {
         // 스페이스바의 기본 동작(스크롤) 방지
         event.preventDefault();
-        
+
         const callButton = document.querySelector('.call-button');
         if (callButton) {
             const phoneNumber = callButton.dataset.phone;
@@ -643,10 +646,10 @@ async function handleKeyDown(e) {
     }
 
     // 필터링된 카드만 가져오기
-    const visibleCards = Array.from(document.querySelectorAll('.card')).filter(card => 
+    const visibleCards = Array.from(document.querySelectorAll('.card')).filter(card =>
         card.style.display !== 'none'
     );
-    
+
     if (visibleCards.length === 0) return;
 
     const dataList = document.getElementById('brand-contact-data-list');
@@ -664,7 +667,7 @@ async function handleKeyDown(e) {
                 // 현재 선택된 카드의 인덱스 찾기
                 const currentCard = document.querySelector('.card.selected');
                 const currentIndex = Array.from(document.querySelectorAll('.card')).indexOf(currentCard);
-                
+
                 // 이전 보이는 카드 찾기
                 let prevVisibleIndex = -1;
                 for (let i = currentIndex - 1; i >= 0; i--) {
@@ -674,7 +677,7 @@ async function handleKeyDown(e) {
                         break;
                     }
                 }
-                
+
                 if (prevVisibleIndex !== -1) {
                     await selectCard(prevVisibleIndex);
                     // 선택된 카드가 화면 상단에 오도록 스크롤 조정
@@ -686,7 +689,7 @@ async function handleKeyDown(e) {
                 }
             }
             break;
-            
+
         case 'ArrowDown':
             e.preventDefault();
             if (selectedCardIndex === -1) {
@@ -697,7 +700,7 @@ async function handleKeyDown(e) {
                 // 현재 선택된 카드의 인덱스 찾기
                 const currentCard = document.querySelector('.card.selected');
                 const currentIndex = Array.from(document.querySelectorAll('.card')).indexOf(currentCard);
-                
+
                 // 다음 보이는 카드 찾기
                 let nextVisibleIndex = -1;
                 for (let i = currentIndex + 1; i < document.querySelectorAll('.card').length; i++) {
@@ -707,7 +710,7 @@ async function handleKeyDown(e) {
                         break;
                     }
                 }
-                
+
                 if (nextVisibleIndex !== -1) {
                     await selectCard(nextVisibleIndex);
                     // 선택된 카드가 화면 하단에 오도록 스크롤 조정
@@ -727,7 +730,7 @@ async function createCard(item, index, startIndex) {
     const card = document.createElement('div');
     card.className = 'card';
     card.dataset.id = item._id;
-    
+
     // 브랜드 정보 유무 확인
     try {
         //const brandPhoneData = await mongo.getBrandPhoneData(item.brand);
@@ -738,17 +741,17 @@ async function createCard(item, index, startIndex) {
         console.error('브랜드 정보 조회 중 오류:', error);
         card.dataset.hasBrandInfo = 'false';
     }
-    
+
     card.addEventListener('click', async () => await selectCard(startIndex + index));
 
     // 카드 헤더 (브랜드명과 통화 상태)
     const header = document.createElement('div');
     header.className = 'card-header';
-    
+
     const brandName = document.createElement('div');
     brandName.className = 'brand-name';
     brandName.textContent = item.brand;
-    
+
     // NEW 상태 표시
     const newStatus = document.createElement('div');
     newStatus.className = 'new-status';
@@ -756,11 +759,11 @@ async function createCard(item, index, startIndex) {
         newStatus.textContent = "NEW";
         newStatus.classList.add('active');
     }
-    
+
     // 최근 통화 상태 표시
     const callStatus = document.createElement('div');
     callStatus.className = 'call-status';
-    
+
     try {
         //const latestCall = await mongo.getLatestCallRecordByCardId(item._id);
         const latestCall = await window.api.fetchLatestCallRecordByCardId(item._id);
@@ -772,7 +775,7 @@ async function createCard(item, index, startIndex) {
                 hour: '2-digit',
                 minute: '2-digit'
             });
-            
+
             callStatus.innerHTML = `
                 <span class="status-value ${latestCall.call_status === '부재중' ? 'missed' : latestCall.call_status === '연결됨' ? 'connected' : ''}">
                     ${latestCall.call_status} (${formattedDate})
@@ -783,7 +786,7 @@ async function createCard(item, index, startIndex) {
     } catch (error) {
         console.error('통화 상태 조회 중 오류:', error);
     }
-    
+
     header.appendChild(brandName);
     header.appendChild(newStatus);
     header.appendChild(callStatus);
@@ -792,7 +795,7 @@ async function createCard(item, index, startIndex) {
     // 상품 정보
     const itemSection = document.createElement('div');
     itemSection.className = 'card-section';
-    
+
     const itemContent = document.createElement('div');
     itemContent.className = 'item-content';
     itemContent.innerHTML = `
@@ -801,12 +804,12 @@ async function createCard(item, index, startIndex) {
             <div class="item-category">${item.item_category}</div>
         </div>
         <div class="crawl-date">크롤링: ${new Date(item.crawl_date).toLocaleDateString('ko-KR', {
-            year: '2-digit',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-        })}</div>
+        year: '2-digit',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    })}</div>
         <div class="item-feed">
             <a href="${item.item_feed_link}" target="_blank" class="feed-link">인스타그램 피드 보기</a>
         </div>
@@ -815,14 +818,14 @@ async function createCard(item, index, startIndex) {
         
         
     `;
-    
+
     itemSection.appendChild(itemContent);
     card.appendChild(itemSection);
 
     // 카테고리 정보
     const categorySection = document.createElement('div');
     categorySection.className = 'card-section';
-    
+
     const categoryContent = document.createElement('div');
     categoryContent.className = 'category-content';
     categoryContent.innerHTML = `
@@ -837,7 +840,7 @@ async function createCard(item, index, startIndex) {
         
         
     `;
-    
+
     categorySection.appendChild(categoryContent);
     card.appendChild(categorySection);
 
@@ -847,10 +850,10 @@ async function createCard(item, index, startIndex) {
 async function loadBrandContactData(isInitialLoad = true, filters = {}) {
     console.log('loadBrandContactData');
     if (isLoading || (!isInitialLoad && !hasMoreData)) return;
-    
+
     try {
         isLoading = true;
-        
+
         // 필터가 전달되지 않은 경우 현재 필터 상태를 가져옴
         if (Object.keys(filters).length === 0) {
             filters = {
@@ -861,7 +864,7 @@ async function loadBrandContactData(isInitialLoad = true, filters = {}) {
                 verificationStatus: brandContactFilter.selectedVerificationStatus
             };
         }
-        
+
         //const result = await mongo.getBrandContactData(currentSkip, 20, filters);
         const result = await window.api.fetchBrandContactData({
             ...filters,
@@ -869,16 +872,16 @@ async function loadBrandContactData(isInitialLoad = true, filters = {}) {
             limit: 20
         });
         const { data, hasMore } = result;
-          
+
         hasMoreData = hasMore;
-        
+
         const dataList = document.getElementById('brand-contact-data-list');
         if (isInitialLoad) {
             dataList.innerHTML = '';
             selectedCardIndex = -1;
             cardData = []; // 데이터 초기화
         }
-        
+
         if (data.length === 0 && isInitialLoad) {
             dataList.innerHTML = '<p>데이터가 없습니다.</p>';
             return;
@@ -894,12 +897,12 @@ async function loadBrandContactData(isInitialLoad = true, filters = {}) {
 
         const cards = await Promise.all(cardPromises);
         cards.forEach(card => dataList.appendChild(card));
-        
+
         // 데이터 로드 완료 후 클래스 추가
         dataList.classList.add('loaded');
 
         currentSkip += data.length;
-        
+
         if (!hasMore) {
             const endMessage = document.createElement('p');
             endMessage.style.textAlign = 'center';
@@ -935,10 +938,10 @@ async function initBrandContact() {
     selectedCardIndex = -1;
     cardData = []; // 데이터 초기화
     loadBrandContactData(true);
-    
+
     const dataList = document.getElementById('brand-contact-data-list');
     dataList.addEventListener('scroll', handleScroll);
-    
+
     // 우측 패널 초기화
     const rightPanel = document.querySelector('.brand-contact-right');
     rightPanel.innerHTML = '<p>카드를 선택하면 브랜드 정보가 표시됩니다.</p>';
@@ -986,11 +989,11 @@ async function saveCallRecord() {
         //await mongo.saveCallRecord(callRecord);
         await window.api.saveCallRecord(callRecord);
         console.log('통화 기록 저장 완료:', callRecord);
-        
+
         // 통화 기록 저장 후 모달 닫기
         const modal = document.getElementById('call-confirm-modal');
         modal.style.display = 'none';
-        
+
         // brandContactCallHistory 모듈을 사용하여 통화 기록 업데이트
         /*
         if (window.brandContactCallHistory) {
@@ -1015,7 +1018,7 @@ async function saveCallRecord() {
                     hour: '2-digit',
                     minute: '2-digit'
                 });
-                
+
                 callStatusElement.innerHTML = `
                     <span class="status-value ${callStatus === '부재중' ? 'missed' : callStatus === '연결됨' ? 'connected' : ''}">
                         ${callStatus} (${formattedDate})
@@ -1024,7 +1027,7 @@ async function saveCallRecord() {
                 `;
             }
         }
-        
+
         // 성공 메시지 표시
         const toast = document.createElement('div');
         toast.className = 'toast-message success';
@@ -1033,12 +1036,12 @@ async function saveCallRecord() {
             <span class="toast-text">통화 기록이 저장되었습니다.</span>
         `;
         document.body.appendChild(toast);
-        
+
         setTimeout(() => {
             toast.classList.add('fade-out');
             setTimeout(() => toast.remove(), 300);
         }, 3000);
-        
+
     } catch (error) {
         console.error('통화 기록 저장 중 오류:', error);
         alert('통화 기록 저장 중 오류가 발생했습니다.');

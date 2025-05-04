@@ -382,7 +382,7 @@ ipcMain.handle('fetch-screening-data', async () => {
     const collection = db.collection(config.database.collections.mainItemTodayData);
 
     const twentyDaysAgo = new Date();
-    twentyDaysAgo.setDate(twentyDaysAgo.getDate() - 25);
+    twentyDaysAgo.setDate(twentyDaysAgo.getDate() - 20);
 
     const data = await collection.find({
         crawl_date: { $gte: twentyDaysAgo },
@@ -466,6 +466,7 @@ ipcMain.handle('send-auth-code', async (event, code) => {
     return true;
 });
 
+
 ipcMain.handle('fetch-brand-verification-status', async (event, allBrands) => {
     const client = await getMongoClient();
     const db = client.db(config.database.name);
@@ -483,6 +484,7 @@ ipcMain.handle('fetch-brand-verification-status', async (event, allBrands) => {
     return brandVerificationMap;
 }); 
 
+// 스크리닝 : 브랜드 검증 상태 업데이트
 ipcMain.handle('update-brand-verification', async (event, { brandName, verificationStatus }) => {
     const client = await getMongoClient();
     const db = client.db(config.database.name);

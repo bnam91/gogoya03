@@ -9,21 +9,31 @@ export async function renderPage(pagePath) {
   console.log('pagePath:', pagePath);
 
   const contentId = pagePath.split('/').pop() + '-content';
+  console.log('contentId:', contentId);
 
   // 모든 콘텐츠 숨김
   document.querySelectorAll('.content-section').forEach(section => {
     section.style.display = 'none';
   });
 
-  const existingSection = document.getElementById(contentId);
+  // 페이지를 새로 create 해야하는 페이지
+  const reCreateContentPage = [
+    'tab2/screening'
+  ];
 
-  if (existingSection) {
-    existingSection.style.display = 'block';
-    updateBreadcrumbFromMenu(pagePath); // ✅ 숨겨진 페이지 다시 보여줄 때도 브레드크럼 갱신
-    return;
+  // 페이지를 숨겨야 하는 페이지
+  if (!reCreateContentPage.includes(pagePath)) {
+    const existingSection = document.getElementById(contentId);
+
+    if (existingSection) {
+      existingSection.style.display = 'block';
+      updateBreadcrumbFromMenu(pagePath); // ✅ 숨겨진 페이지 다시 보여줄 때도 브레드크럼 갱신
+      return;
+    }
   }
 
   try {
+    console.log('renderPage try');
     const [folder, file] = pagePath.split('/');
     const response = await fetch(`./src/pages/tabs/${folder}/${file}.html`);
     if (!response.ok) throw new Error('❌ 페이지 로딩 실패');
@@ -35,6 +45,16 @@ export async function renderPage(pagePath) {
     const newSection = tempDiv.querySelector('.content-section');
     if (newSection) {
       newSection.style.display = 'block';
+      
+      // 이미 존재하는 섹션인지 확인
+      const existingNewSection = document.getElementById(contentId);
+      if (existingNewSection) {
+        // 기존 섹션 제거
+        existingNewSection.remove();
+      }
+
+      // 초기화 후 append
+      await additionalPageLoad(pagePath, newSection);
       content.appendChild(newSection);
       newSection.classList.add('active');
     }
