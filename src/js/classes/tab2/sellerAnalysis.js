@@ -224,6 +224,10 @@ export class SellerAnalysisManager {
                                 DM
                             </label>
                             <label>
+                                <input type="radio" name="contactMethod" value="inpk">
+                                인포크
+                            </label>
+                            <label>
                                 <input type="radio" name="contactMethod" value="email">
                                 이메일
                             </label>
@@ -360,6 +364,13 @@ export class SellerAnalysisManager {
                     contactInfoField.value = '';
                 } else {
                     contactInfoInput.style.display = 'block';
+                    if (input.value === 'inpk') {
+                        contactInfoField.placeholder = '인포크 정보를 입력하세요';
+                    } else if (input.value === 'email') {
+                        contactInfoField.placeholder = '이메일 주소를 입력하세요';
+                    } else {
+                        contactInfoField.placeholder = '연락처 정보를 입력하세요';
+                    }
                 }
             });
         });
