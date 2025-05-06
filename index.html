@@ -3,7 +3,7 @@
 
 <head>
     <!-- 기본 메타데이터 및 스타일시트 -->
-    <title>gogoya v0.7.3</title>
+    <title>gogoya</title>
     <!-- Google Fonts - Noto Sans KR 폰트 로드 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -44,6 +44,7 @@
             <!-- 로고 버튼 -->
             <div class="logo-container">
                 <img src="src/images/logo.svg" alt="로고" class="logo" data-page="tab1/home">
+                <div class="version-label" id="version-label">버전 로딩 중...</div>
             </div>
 
             <!-- 메뉴 영역 -->
@@ -62,4 +63,28 @@
 <!-- 메인 모듈 로드 -->
 <script type="module" src="./src/js/mainRender.js">
 </script>
+
+<!-- 버전 파싱 -->
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const version = params.get('version') || 'unknown';
+      document.title = `gogoya ${version}`;
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const version = params.get('version') || 'unknown';
+
+    document.title = `gogoya ${version}`;
+
+    const label = document.getElementById('version-label');
+    if (label) {
+      label.textContent = `${version}`;
+    }
+
+  });
+  </script>
+
+  
 </html>

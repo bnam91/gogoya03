@@ -53,13 +53,19 @@ console.log('현재 모드:', isDev ? '개발 모드' : '프로덕션 모드');
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+
+//버전 파싱
+const versionFile = path.join(__dirname, 'VERSION.txt');
+const versionData = JSON.parse(fs.readFileSync(versionFile, 'utf8'));
+const tagName = versionData.tag_name;
+
 // ===========================================
 // ipcMain 핸들러 등록
 // 렌더러 프로세스가 'brand-contact-data-request'라는 채널로 요청할 때
 // MongoDB 데이터 조회 후 응답을 돌려준다
 // ===========================================
 ipcMain.handle('brand-contact-data-request', async (event, filters) => {
-    
+
     try {
         const { skip = 0, limit = 20, ...otherFilters } = filters;
         const result = await getBrandContactData(skip, limit, otherFilters);
@@ -477,14 +483,14 @@ ipcMain.handle('fetch-brand-verification-status', async (event, allBrands) => {
         { brand_name: { $in: allBrands } },
         { projection: { brand_name: 1, is_verified: 1 } }
     ).toArray();
-    
+
     // 브랜드별 is_verified 상태를 Map으로 변환
     const brandVerificationMap = new Map(
         brandInfos.map(info => [info.brand_name, info.is_verified])
     );
 
     return brandVerificationMap;
-}); 
+});
 
 // 스크리닝 : 브랜드 검증 상태 업데이트
 ipcMain.handle('update-brand-verification', async (event, { brandName, verificationStatus }) => {
@@ -501,7 +507,7 @@ ipcMain.handle('update-brand-verification', async (event, { brandName, verificat
 ipcMain.handle('fetch-influencer-data-many', async (event, cleanNameList) => {
     const client = await getMongoClient();
     const db = client.db(config.database.name);
-    const collection = db.collection(config.database.collections.influencerData);   
+    const collection = db.collection(config.database.collections.influencerData);
 
     const data = await collection
         .find({ clean_name: { $in: cleanNameList } })
@@ -521,8 +527,8 @@ ipcMain.handle('get-dm-records', async (event, cleanName) => {
         influencer_name: cleanName,
         status: { $ne: 'failed' }
     })
-    .sort({ dm_date: -1 }) // 최신순 정렬
-    .toArray();
+        .sort({ dm_date: -1 }) // 최신순 정렬
+        .toArray();
 
     return records;
 });
@@ -568,12 +574,17 @@ function createWindow() {
         }
     });
 
+
+
     // 개발자 도구 자동으로 열기
     mainWindow.webContents.openDevTools();
 
     // 전체화면으로 시작
     mainWindow.maximize();
-    mainWindow.loadFile('index.html');
+    // index.html?version=v0.7.5 처럼 전달
+    mainWindow.loadFile('index.html', {
+        query: { version: tagName }
+    });
 
     // 모든 외부 링크를 기본 브라우저에서 열도록 설정
     mainWindow.webContents.setWindowOpenHandler(({ url }) => {

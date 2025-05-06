@@ -217,3 +217,11 @@ h2 {
 .logo:hover {
     opacity: 0.8;
 } 
+
+.version-label {
+    margin-top: 6px;
+    text-align: center;
+    font-size: 12px;
+    color: #999;
+    font-family: 'Noto Sans KR', sans-serif;
+  }
