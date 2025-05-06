@@ -58,6 +58,13 @@
                         <label for="mail-content">내용</label>
                         <textarea id="mail-content" class="mail-input" rows="10" placeholder="메일 내용을 입력하세요"></textarea>
                     </div>
+                    <div class="form-group">
+                        <label for="mail-attachments">첨부파일</label>
+                        <div class="attachment-container">
+                            <input type="file" id="mail-attachments" class="mail-input" multiple>
+                            <div id="attachment-list" class="attachment-list"></div>
+                        </div>
+                    </div>
                     <div class="form-actions">
                         <button class="mail-button preview">미리보기</button>
                         <button class="mail-button send">보내기</button>
@@ -66,35 +73,49 @@
             </div>
         </div>
     </div>
-</div>
 
-<!-- 메일 전송 확인 모달 -->
-<div id="send-mail-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h4>메일 전송 확인</h4>
-            <span class="close-modal">&times;</span>
-        </div>
-        <div class="modal-body">
-            <p>다음 내용으로 메일을 전송하시겠습니까?</p>
-            <div class="mail-preview">
-                <div class="preview-item">
-                    <span class="label">보내는 사람:</span>
-                    <span id="preview-from"></span>
-                </div>
-                <div class="preview-item">
-                    <span class="label">받는 사람:</span>
-                    <span id="preview-to"></span>
-                </div>
-                <div class="preview-item">
-                    <span class="label">제목:</span>
-                    <span id="preview-subject"></span>
+    <!-- 메일 전송 확인 모달 -->
+    <div id="send-mail-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4>메일 전송 확인</h4>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>다음 내용으로 메일을 전송하시겠습니까?</p>
+                <div class="mail-preview">
+                    <div class="preview-row">
+                        <span class="preview-label">보내는 사람:</span>
+                        <span class="preview-value" id="preview-from"></span>
+                    </div>
+                    <div class="preview-row">
+                        <span class="preview-label">받는 사람:</span>
+                        <span class="preview-value" id="preview-to"></span>
+                    </div>
+                    <div class="preview-row">
+                        <span class="preview-label">제목:</span>
+                        <span class="preview-value" id="preview-subject"></span>
+                    </div>
+                    <div class="preview-row">
+                        <span class="preview-label">내용:</span>
+                        <div class="preview-value" id="preview-content"></div>
+                    </div>
+                    <div class="preview-row">
+                        <span class="preview-label">첨부파일:</span>
+                        <div class="preview-value" id="preview-attachments"></div>
+                    </div>
                 </div>
             </div>
+            <div class="modal-footer">
+                <button class="modal-button cancel">취소</button>
+                <button class="modal-button confirm">전송</button>
+            </div>
         </div>
-        <div class="modal-footer">
-            <button class="modal-button cancel">취소</button>
-            <button class="modal-button confirm">전송</button>
-        </div>
+    </div>
+
+    <!-- 전송 중 인디케이터 -->
+    <div class="sending-overlay" id="sending-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <div class="sending-text">메일을 전송 중입니다...</div>
     </div>
 </div>

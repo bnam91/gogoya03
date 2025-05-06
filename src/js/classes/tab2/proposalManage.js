@@ -572,6 +572,48 @@ export class ProposalManage {
     initializeMailForm() {
         console.log('메일 폼 초기화 시작');
         
+        // 파일 첨부 이벤트 리스너 추가
+        const attachmentInput = document.getElementById('mail-attachments');
+        const attachmentList = document.getElementById('attachment-list');
+        
+        if (attachmentInput) {
+            attachmentInput.addEventListener('change', (event) => {
+                const files = event.target.files;
+                attachmentList.innerHTML = '';
+                
+                Array.from(files).forEach((file, index) => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'attachment-item';
+                    fileItem.innerHTML = `
+                        <span class="file-name">${file.name}</span>
+                        <span class="file-size">(${(file.size / 1024).toFixed(1)} KB)</span>
+                        <button class="remove-attachment" data-index="${index}">&times;</button>
+                    `;
+                    attachmentList.appendChild(fileItem);
+                });
+            });
+        }
+
+        // 첨부파일 제거 이벤트 위임
+        if (attachmentList) {
+            attachmentList.addEventListener('click', (event) => {
+                if (event.target.classList.contains('remove-attachment')) {
+                    const index = parseInt(event.target.dataset.index);
+                    const dt = new DataTransfer();
+                    const files = attachmentInput.files;
+                    
+                    for (let i = 0; i < files.length; i++) {
+                        if (i !== index) {
+                            dt.items.add(files[i]);
+                        }
+                    }
+                    
+                    attachmentInput.files = dt.files;
+                    event.target.parentElement.remove();
+                }
+            });
+        }
+
         // 템플릿 선택 드롭다운 초기화
         const templateSelect = document.getElementById('mail-template');
         if (templateSelect) {
@@ -590,6 +632,8 @@ export class ProposalManage {
         }
 
         const sendButton = document.querySelector('.mail-button.send');
+        const sendingOverlay = document.getElementById('sending-overlay');
+        console.log('sendingOverlay:', sendingOverlay);
         if (sendButton) {
             sendButton.addEventListener('click', async () => {
                 console.log('보내기 버튼 클릭됨');
@@ -624,13 +668,29 @@ export class ProposalManage {
                 const previewTo = document.getElementById('preview-to');
                 const previewSubject = document.getElementById('preview-subject');
                 const previewContent = document.getElementById('preview-content');
+                const previewAttachments = document.getElementById('preview-attachments');
                 const mailContent = document.getElementById('mail-content');
+                const attachmentInput = document.getElementById('mail-attachments');
 
                 if (previewFrom) previewFrom.textContent = fromSelect.options[fromSelect.selectedIndex].text;
                 if (previewTo) previewTo.textContent = toInput.value;
                 if (previewSubject) previewSubject.textContent = subjectInput.value;
                 if (previewContent && mailContent) {
                     previewContent.innerHTML = mailContent.value.replace(/\n/g, '<br>');
+                }
+
+                if (previewAttachments && attachmentInput) {
+                    const files = Array.from(attachmentInput.files);
+                    if (files.length > 0) {
+                        previewAttachments.innerHTML = files.map(file => 
+                            `<div class="preview-attachment-item">
+                                <span class="file-name">${file.name}</span>
+                                <span class="file-size">(${(file.size / 1024).toFixed(1)} KB)</span>
+                            </div>`
+                        ).join('');
+                    } else {
+                        previewAttachments.innerHTML = '<span class="no-attachments">첨부파일 없음</span>';
+                    }
                 }
 
                 // 모달 표시
@@ -658,7 +718,11 @@ export class ProposalManage {
                 }
 
                 if (confirmButton) {
-                    confirmButton.addEventListener('click', async () => {
+                    // 이벤트 리스너 중복 방지
+                    const newConfirmButton = confirmButton.cloneNode(true);
+                    confirmButton.parentNode.replaceChild(newConfirmButton, confirmButton);
+
+                    newConfirmButton.addEventListener('click', async () => {
                         confirmButton.disabled = true;
                         cancelButton.disabled = true;
                         const sendingIndicator = modal.querySelector('.sending-indicator');
@@ -682,6 +746,12 @@ export class ProposalManage {
 
                             const signature = signatures[accountId] || '';
 
+                            // 첨부파일 경로 가져오기
+                            const attachments = Array.from(attachmentInput.files).map(file => ({
+                                filename: file.name,
+                                path: file.path
+                            }));
+                            
                             const mailOptions = {
                                 from: fromSelect.value,
                                 to: toInput.value,
@@ -691,9 +761,15 @@ export class ProposalManage {
                                         ${bodyContent}
                                         ${signature}
                                     </div>
-                                `
+                                `,
+                                attachments: attachments
                             };
                             console.log('mailOptions:', mailOptions);
+
+                            
+
+                            // 전송 시작 시 표시
+                            sendingOverlay.style.display = 'flex';
 
                             // SMTP를 통해 메일 전송
                             const result = await window.api.sendMailWithSMTP(accountId, mailOptions);
@@ -706,7 +782,13 @@ export class ProposalManage {
                                 throw new Error(result.error || '메일 전송 실패');
                             }
 
+                            // 성공 또는 실패 후 숨기기
+                            sendingOverlay.style.display = 'none';
+
                         } catch (error) {
+                            sendingOverlay.style.display = 'none';
+                            confirmButton.disabled = false;
+                            cancelButton.disabled = false;
                             console.error('메일 전송 오류:', error);
                             if (confirm(`메일 전송 중 오류가 발생했습니다: ${error.message}\n메일 내용을 클립보드에 복사하시겠습니까?`)) {
                                 copyMailToClipboard({
@@ -716,10 +798,9 @@ export class ProposalManage {
                                 });
                             }
                         } finally {
+                            sendingOverlay.style.display = 'none';
                             confirmButton.disabled = false;
                             cancelButton.disabled = false;
-                            const sendingIndicator = modal.querySelector('.sending-indicator');
-                            if (sendingIndicator) sendingIndicator.style.display = 'none';
                         }
                     });
                 }
@@ -872,6 +953,10 @@ function createMailModal() {
                                     <div class="preview-row">
                                         <span class="preview-label">내용:</span>
                                         <div class="preview-value" id="preview-content"></div>
+                                    </div>
+                                    <div class="preview-row">
+                                        <span class="preview-label">첨부파일:</span>
+                                        <div class="preview-value" id="preview-attachments"></div>
                                     </div>
                                 </div>
                             </div>

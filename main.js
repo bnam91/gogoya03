@@ -563,8 +563,6 @@ function createWindow() {
         height: 800,
         webPreferences: {
             preload: path.join(__dirname, 'src/preload.js'), // 여기에 안전한 통신용 preload 스크립트
-            //nodeIntegration: true,
-            //ontextIsolation: false
             nodeIntegration: false,
             contextIsolation: true
         }
