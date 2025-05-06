@@ -67,21 +67,6 @@ export class ScreeningManager {
                 this.showDetailInfo(brandName, itemName);
             }
 
-            /*
-            const brandCard = e.target.closest('.brand-card');
-            if (brandCard) {
-                const brandName = brandCard.querySelector('.brand-name');
-                console.log('clicked brandName : ', brandName);
-                if (brandName) {
-                    brandName.classList.toggle('selected');
-                    const brand = brandName.textContent.trim();
-                    const isSelected = brandName.classList.contains('selected');
-                    this.updateBrandVerification(brand, isSelected);
-                }
-                brandCard.classList.toggle('selected');
-            }
-            */
-
             const brandCard = e.target.closest('.brand-card');
             if (!brandCard) return;
 
@@ -176,9 +161,10 @@ export class ScreeningManager {
         }
 
         // 릴스뷰 필터
-        const viewsSelect = document.querySelectorAll('.filter-dropdown')[1].querySelector('.filter-select');
-        const viewsOptions = document.querySelectorAll('.filter-dropdown')[1].querySelector('.filter-options');
-        const viewsRadios = document.querySelectorAll('.filter-option input[type="radio"]');
+        const viewsFilter = document.getElementById('views-filter'); 
+        const viewsSelect = viewsFilter.querySelector('.filter-select');
+        const viewsOptions = viewsFilter.querySelector('.filter-options');
+        const viewsRadios = viewsFilter.querySelectorAll('.filter-option input[type="radio"]');
 
         if (viewsSelect) {
             // 드롭다운 토글
@@ -196,9 +182,10 @@ export class ScreeningManager {
         }
 
         // 픽 상태 필터
-        const pickStatusSelect = document.querySelectorAll('.filter-dropdown')[2].querySelector('.filter-select');
-        const pickStatusOptions = document.querySelectorAll('.filter-dropdown')[2].querySelector('.filter-options');
-        const pickStatusRadios = document.querySelectorAll('.filter-option input[type="radio"]');
+        const pickStatusFilter = document.getElementById('pick-filter');
+        const pickStatusSelect = pickStatusFilter.querySelector('.filter-select');
+        const pickStatusOptions = pickStatusFilter.querySelector('.filter-options');
+        const pickStatusRadios = pickStatusFilter.querySelectorAll('.filter-option input[type="radio"]');
 
         if (pickStatusSelect) {
             // 드롭다운 토글
@@ -261,21 +248,40 @@ export class ScreeningManager {
     }
 
     updateSelectedViewsDisplay = () => {
-        const selectedViews = document.querySelectorAll('.filter-dropdown')[1].querySelector('.selected-items');
+        const viewsFilter = document.getElementById('views-filter');
+        const viewsSelect = viewsFilter.querySelector('.filter-select');
+        const viewsRadios = viewsFilter.querySelectorAll('.filter-option input[type="radio"]');
+        const selectedViews = viewsSelect.querySelector('.selected-items');
+    
         if (this.selectedViews) {
-            const selectedOption = document.querySelector(`input[type="radio"][value="${this.selectedViews}"]`).nextElementSibling.textContent;
-            selectedViews.textContent = selectedOption;
+            const selectedRadio = Array.from(viewsRadios).find( 
+                radio => radio.value === this.selectedViews
+            );
+            if (selectedRadio) {
+                const label = selectedRadio.parentElement;
+                selectedViews.textContent = label.textContent.trim();
+            }
         } else {
             selectedViews.textContent = '릴스뷰 선택';
         }
     }
+    
 
     // 픽 상태 업데이트
     updateSelectedPickStatusDisplay = () => {
-        const selectedPickStatus = document.querySelectorAll('.pick-filter-dropdown')[1].querySelector('.pick-selected-items');
+        const pickStatusFilter = document.getElementById('pick-filter');
+        const pickStatusSelect = pickStatusFilter.querySelector('.filter-select');
+        const pickStatusRadios = pickStatusFilter.querySelectorAll('.filter-option input[type="radio"]');
+        const selectedPickStatus = pickStatusSelect.querySelector('.selected-items');
+    
         if (this.selectedPickStatus) {
-            const selectedOption = document.querySelector(`input[type="radio"][value="${this.selectedPickStatus}"]`).nextElementSibling.textContent;
-            selectedPickStatus.textContent = selectedOption;
+            const selectedRadio = Array.from(pickStatusRadios).find(
+                radio => radio.value === this.selectedPickStatus
+            );
+            if (selectedRadio) {
+                const label = selectedRadio.parentElement;
+                selectedPickStatus.textContent = label.textContent.trim();
+            }
         } else {
             selectedPickStatus.textContent = '픽 상태 선택';
         }
@@ -292,15 +298,21 @@ export class ScreeningManager {
         document.body.appendChild(toast);
 
         try {
+            const allBrands = [...new Set(this.data.map(item => item.brand))];
+            const map = await window.api.fetchBrandVerificationStatus(allBrands);
+            this.brandVerificationMap = map;
+
             let result = this.data;
 
             // 카테고리 필터
             if (this.selectedCategories.length > 0) {
+                console.log("카테고리 필터 적용");
                 result = result.filter(item => this.selectedCategories.includes(item.item_category));
             }
 
             // 검색어 필터
             if (this.searchTerm) {
+                console.log("검색어 필터 적용");
                 const term = this.searchTerm.toLowerCase();
                 result = result.filter(item =>
                     item.brand.toLowerCase().includes(term) ||
@@ -352,12 +364,18 @@ export class ScreeningManager {
             }
 
             // 픽 상태 필터
-            if (this.selectedPickStatus) {
-                console.log("픽 상태 필터 적용");
-                console.log("this.selectedPickStatus : ", this.selectedPickStatus);
-                result = result.filter(item => item.pick_status === this.selectedPickStatus);
+            if (this.selectedPickStatus === 'pick') {
+                console.log("picked 필터 적용");
+                if (this.brandVerificationMap) {
+                    result = result.filter(item => this.brandVerificationMap.get(item.brand) === "pick");
+                }
+            } else if (this.selectedPickStatus === 'yet') {
+                console.log("yet 필터 적용");
+                if (this.brandVerificationMap) {
+                    result = result.filter(item => this.brandVerificationMap.get(item.brand) !== "pick");
+                }
             }
-
+            console.log("result after pick status filter : ", result);
 
             this.filteredData = result;
 
@@ -425,11 +443,13 @@ export class ScreeningManager {
             // 선택된 값 초기화
             this.selectedCategories = [];
             this.selectedViews = null;
+            this.selectedPickStatus = null;
             this.searchTerm = '';
 
             // 디스플레이 텍스트 초기화
             this.updateSelectedCategories();
             this.updateSelectedViewsDisplay();
+            this.updateSelectedPickStatusDisplay();
 
             // 데이터 초기화
             this.filteredData = this.data;
@@ -452,6 +472,7 @@ export class ScreeningManager {
                 <span class="toast-text">필터가 초기화되었습니다.</span>
             `;
         } catch (error) {
+            console.error('필터 초기화 중 오류:', error);
             // 에러 토스트 메시지로 변경
             toast.className = 'toast-message error';
             toast.innerHTML = `
@@ -491,15 +512,22 @@ export class ScreeningManager {
     // 스크리닝 데이터 로드
     loadScreeningData = async () => {
         try {
-
             try {
-
                 const data = await window.api.fetchScreeningData();
                 console.log("로드된 데이터 수:", data.length);
 
                 if (data.length > 0) {
                     this.data = data;
                     this.filteredData = data;
+                    
+                    // 데이터 갯수 업데이트
+                    const totalCount = document.getElementById('screening-total-count');
+                    const filteredCount = document.getElementById('screening-filtered-count');
+                    if (totalCount && filteredCount) {
+                        totalCount.textContent = data.length;
+                        filteredCount.textContent = data.length;
+                    }
+                    
                     this.renderContent();
                 } else {
                     console.log("데이터가 없습니다.");
