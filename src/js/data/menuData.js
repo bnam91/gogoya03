@@ -26,6 +26,13 @@ export const menuData = [
       ]
     },
     {
+      title: "커머스",
+      tabClass: "tab4",
+      children: [
+        { title: "쿠팡", page: "tab4/coupang" }
+      ]
+    },
+    {
       title: "관리자",
       tabClass: "tab3",
       children: [
