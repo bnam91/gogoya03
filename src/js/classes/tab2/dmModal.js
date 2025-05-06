@@ -150,83 +150,6 @@ export class DmModal {
                 });
             });
             
-            /*
-            // Google API 직접 사용하기
-            const { google } = require('googleapis');
-            
-            // 저장된 자격 증명 정보 (token.json) 직접 로드
-            const fs = window.fs;
-            const os = require('os');
-            const path = window.path;
-            
-            // 프로젝트 루트 상대 경로 생성 (일렉트론 앱에서의 상대 경로)
-            let tokenPath;
-            if (process.platform === 'win32') {
-                tokenPath = path.join(process.env.APPDATA, 'GoogleAPI', 'token.json');
-            } else {
-                tokenPath = path.join(os.homedir(), '.config', 'GoogleAPI', 'token.json');
-            }
-            
-            // 토큰 읽기
-            const credToken = fs.existsSync(tokenPath) ? JSON.parse(fs.readFileSync(tokenPath)) : null;
-            if (!credToken) {
-                alert('인증 토큰이 없습니다. 먼저 인증을 완료해주세요.');
-                uploadButton.innerHTML = originalText;
-                uploadButton.disabled = false;
-                return;
-            }
-            
-            // credentials_token.js 파일에서 클라이언트 정보 읽기
-            // 절대 경로로 직접 접근
-            // const credentialsTokenPath = 'C:/Users/신현빈/Desktop/github/gogoya02/token/credentials_token.js';
-            const credentialsTokenPath = './token/credentials_token.js';
-            const credentialsModule = require(credentialsTokenPath);
-            const CLIENT_ID = credentialsModule.installed.client_id;
-            const CLIENT_SECRET = credentialsModule.installed.client_secret;
-
-            // OAuth 클라이언트 생성 및 인증 정보 설정
-            const { OAuth2Client } = require('google-auth-library');
-            const oAuth2Client = new OAuth2Client(CLIENT_ID, CLIENT_SECRET);
-            oAuth2Client.setCredentials(credToken);
-            
-            // Google Sheets API 클라이언트 생성
-            const sheets = google.sheets({ version: 'v4', auth: oAuth2Client });
-            
-            // 현재 날짜 생성
-            const now = new Date();
-            const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-            
-            // spreadsheetId 및 테스트 시트 설정
-            const spreadsheetId = '1VhEWeQASyv02knIghpcccYLgWfJCe2ylUnPsQ_-KNAI';
-            const range = 'contact!A2:H';  // contact 시트의 A2-H 열 범위 (2행부터 시작)
-            
-            // 업로드할 데이터 구성
-            const values = selectedInfluencers.map(influencer => [
-                `https://www.instagram.com/${influencer.username}`,  // A열 - Instagram 프로필 URL
-                influencer.name,          // B열 - 이름 (clean_name)
-                '',                       // C열 - 빈값
-                '',                       // D열 - 빈값
-                brand,                    // E열 - 브랜드명
-                item,                     // F열 - 아이템명
-                `${dateStr} ${timeStr}`,  // G열 - 날짜와 시간
-                influencer.contactMethod  // H열 - 연락방법
-            ]);
-            
-            // 데이터 추가 (append)
-            const response = await sheets.spreadsheets.values.append({
-                spreadsheetId,
-                range,
-                valueInputOption: 'USER_ENTERED',
-                resource: {
-                    values
-                }
-            });
-            
-            // 업로드 완료 메시지
-            alert(`${selectedInfluencers.length}명의 인플루언서 정보가 성공적으로 업로드되었습니다.`);
-            this.close();
-            */
             const result = await window.googleSheetApi.uploadInfluencerData({
                 brand,
                 item,
@@ -242,7 +165,7 @@ export class DmModal {
             uploadButton.innerHTML = originalText;
             uploadButton.disabled = false;
             
-            console.log('업로드 완료:', response.data);
+            console.log('업로드 완료:', result);
             
         } catch (error) {
             console.error('업로드 중 오류 발생:', error);
