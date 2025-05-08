@@ -8,5 +8,6 @@
 https://drive.google.com/drive/u/0/folders/1pKuFkAVd8kaoFo7En8o59fX1KqMur4lL
 - GOGOYA03/src/js/config/ 에 config.js 이동
 - GOGOYA03/token/ 에 토큰js 이동
+- GOGOYA03/VERSION.txt 
 
 ## npm install

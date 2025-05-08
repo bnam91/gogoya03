@@ -620,11 +620,6 @@ function createWindow() {
         }
     });
 
-
-
-    // 개발자 도구 자동으로 열기
-    mainWindow.webContents.openDevTools();
-
     // 전체화면으로 시작
     mainWindow.maximize();
     // index.html?version=v0.7.5 처럼 전달
