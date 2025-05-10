@@ -31,6 +31,8 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     padding: 8px 0;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .seller-match-right-panel {
@@ -85,11 +87,12 @@ h3 {
     margin-top: 10px;
 }
 
-#seller-match-center-content,
-#seller-match-right-content {
+#seller-match-center-content {
     height: 100%;
     overflow: hidden;
-    padding: 5px 0 0 10px;
+    padding: 5px 10px 0 10px;
+    display: flex;
+    flex-direction: column;
 }
 
 /* 스크롤바 스타일 커스터마이징 */
@@ -260,17 +263,35 @@ h3 {
     cursor: pointer;
 }
 
+.influencer-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    table-layout: fixed;
+}
+
+.influencer-table th,
+.influencer-table td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .influencer-table th {
     background-color: #f8f9fa;
     padding: 8px;
-    text-align: center;
+    text-align: left;
     border-bottom: 1px solid #eee;
     position: sticky;
     top: 0;
     z-index: 10;
+    user-select: none;
+    font-weight: 600;
 }
 
-.influencer-table th.checkbox-col {
+.influencer-table th.checkbox-col,
+.influencer-table td.checkbox-col {
+    width: 30px;
     text-align: center;
 }
 
@@ -673,5 +694,157 @@ h3 {
 h3 {
     margin: 0 0 10px 0;
     font-size: 1rem;
+    color: #333;
+}
+
+.import-excel-button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #52c41a;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 14px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 4px rgba(82,196,26,0.08);
+    position: absolute;
+    right: 1rem;
+}
+.import-excel-button i {
+    font-size: 1.1em;
+}
+.import-excel-button:hover {
+    background: #389e0d;
+    color: #fff;
+    box-shadow: 0 4px 8px rgba(82,196,26,0.15);
+}
+
+.filter-row .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.total-users-count {
+    font-weight: bold;
+    color: #222;
+    font-size: 1.05em;
+    margin-left: 2px;
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    margin-bottom: 8px;
+}
+
+.filter-label {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+}
+.seller-match-right-panel{
+    overflow: scroll;
+}
+
+i.fab:hover {
+    font-weight: bold;
+}
+td.name-username {
+    text-align: left;
+    position: relative;
+}
+.sort-icon{
+    cursor: pointer;
+}
+.profile-link-icon {
+    position: absolute;
+    right: 0;
+}
+
+.sort-icon {
+    display: inline-block;
+    margin-left: 5px;
+    color: #666;
+    cursor: pointer;
+    font-size: 14px;
+    vertical-align: middle;
+    user-select: none;
+    line-height: 1;
+    font-family: inherit;
+    transition: color 0.2s;
+}
+.sort-icon:hover {
+    color: #1890ff;
+}
+
+.contact-sort-toggle {
+    margin-left: 6px;
+    padding: 2px 8px;
+    font-size: 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #f8f9fa;
+    color: #333;
+    cursor: pointer;
+    vertical-align: middle;
+}
+.contact-sort-toggle:hover {
+    background: #e6f7ff;
+    color: #1890ff;
+    border-color: #1890ff;
+}
+
+.contact-method-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+/* 정렬 헤더 및 버튼 스타일 */
+.sort-header-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sort-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sort-toggle:hover {
+    background: #f5f5f5;
+    border-color: #d0d0d0;
+}
+
+.sort-toggle i {
+    font-size: 12px;
+    color: #666;
+}
+
+.sort-toggle:hover i {
+    color: #333;
+}
+
+/* 활성화된 정렬 버튼 스타일 (동적 적용 필요시 JS에서 active 클래스 추가) */
+.sort-toggle.active {
+    background: #f0f0f0;
+    border-color: #d0d0d0;
+}
+
+.sort-toggle.active i {
     color: #333;
 }

@@ -118,8 +118,21 @@ export function updateBreadcrumbFromMenu(pagePath) {
   if (currentElement) currentElement.textContent = currentTitle || '';
 }
 
-// 브랜드 컨택 페이지일 경우 페이지 로드 후 모달 추가
+// 페이지 내 추가 콘텐츠 로드
 export async function additionalPageLoad(pagePath, content) {
+  // 홈 페이지 추가 콘텐츠 로드
+  if (pagePath === 'tab1/home') {
+    const loginBtn = content.querySelector('.login-btn');
+    loginBtn.addEventListener('click', function() {
+      window.location.href = './src/pages/member/login.html';
+    });
+    const signupBtn = content.querySelector('.signup-btn');
+    signupBtn.addEventListener('click', function() {
+      window.location.href = './src/pages/member/signup.html';
+    });
+  }
+
+  // 브랜드 컨택 페이지 추가 콘텐츠 로드
   if (pagePath === 'tab2/brand-contact') {
     // 중복 추가 방지 (이미 있는 경우 생략)
     if (content.querySelector('#call-confirm-modal')) {

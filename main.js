@@ -22,6 +22,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { getGmailAuthUrl } from './src/gmailAuth.js';
 import { smtpAuth } from './token/smtpAuth.js';
 import nodemailer from 'nodemailer';
+import xlsx from 'xlsx';
 let authInstance; // 전역에 저장
 // 인코딩 설정
 process.env.CHARSET = 'UTF-8';
@@ -603,6 +604,53 @@ ipcMain.handle('send-mail-with-smtp', async (event, { accountId, mailOptions }) 
     } catch (error) {
         console.error('SMTP 메일 전송 오류:', error);
         return { success: false, error: error.message };
+    }
+});
+
+// 엑셀 파일 읽기 핸들러 추가
+ipcMain.handle('read-excel-file', async (event, filePath) => {
+    try {
+        // 파일 경로 정규화
+        const normalizedPath = path.normalize(filePath);
+        
+        // 파일 존재 여부 확인
+        if (!fs.existsSync(normalizedPath)) {
+            throw new Error(`파일을 찾을 수 없습니다: ${normalizedPath}`);
+        }
+
+        // 파일 읽기
+        const workbook = xlsx.readFile(normalizedPath, {
+            codepage: 65001, // UTF-8
+            cellDates: true,
+            cellNF: false,
+            cellText: false
+        });
+
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        
+        // 데이터를 단순한 배열 형태로 변환
+        const data = xlsx.utils.sheet_to_json(worksheet, { 
+            header: 1,
+            defval: '', // 빈 셀의 기본값을 빈 문자열로 설정
+            blankrows: false // 빈 행 제외
+        });
+
+        // 각 행의 데이터를 문자열로 변환하여 전송
+        const processedData = data.map(row => 
+            row.map(cell => {
+                if (cell === null || cell === undefined) return '';
+                if (typeof cell === 'object' && cell instanceof Date) {
+                    return cell.toISOString();
+                }
+                return String(cell).trim();
+            })
+        );
+
+        return processedData;
+    } catch (error) {
+        console.error('엑셀 파일 읽기 실패:', error);
+        throw new Error(`엑셀 파일 읽기 실패: ${error.message}`);
     }
 });
 

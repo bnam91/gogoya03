@@ -10,12 +10,19 @@ export class SellerMatchManager {
         this.centerContent = null;
         this.rightContent = null;
         this.influencers = [];
+        this.originalInfluencers = [];
+        this.filteredInfluencers = [];
         this.selectedInfluencerIds = new Set(); // 선택된 인플루언서의 ID를 저장
         this.initialized = false; // 초기화 여부를 추적하는 플래그 추가
         this.brandRecordsManager = new BrandRecordsManager();
         this.dmRecordsManager = new DmRecordsManager();
         this.dmModal = new DmModal();
         this.sellerMatchFilter = new SellerMatchFilter();
+        this.sortConfig = {
+            column: null,
+            direction: 'asc'
+        };
+        this.contactSortTarget = null; // 컨택 정렬 타겟
     }
 
     init = async () => {
@@ -58,56 +65,13 @@ export class SellerMatchManager {
 
     loadInfluencerData = async () => {
         try {
-            /*
-            const client = await window.mongo.getMongoClient();
-            const db = client.db('insta09_database');
-            const collection = db.collection('02_main_influencer_data');
-
-            const pipeline = [
-                {
-                    "$match": {
-                        "reels_views(15)": { "$exists": true, "$ne": "" },
-                        "is_contact_excluded": { "$ne": true }
-                    }
-                },
-                {
-                    "$addFields": {
-                        "reels_views_num": {
-                            "$cond": {
-                                "if": { "$eq": ["$reels_views(15)", "-"] },
-                                "then": 0,
-                                "else": { "$toInt": "$reels_views(15)" }
-                            }
-                        }
-                    }
-                },
-                {
-                    "$sort": { "reels_views_num": -1 }
-                },
-                {
-                    "$project": {
-                        "username": 1,
-                        "clean_name": 1,
-                        "category": 1,
-                        "profile_link": 1,
-                        "reels_views": "$reels_views(15)",
-                        "reels_views_num": 1,
-                        "contact_method": 1
-                    }
-                }
-            ];
-
-            
-
-            const newInfluencers = await collection.aggregate(pipeline).toArray();
-            */
             const newInfluencers = await window.api.fetchInfluencerDataForSellerMatch();
-
-            // 기존에 선택된 인플루언서들의 ID를 유지하면서 새로운 데이터로 업데이트
             const existingSelectedIds = new Set(this.selectedInfluencerIds);
             this.influencers = newInfluencers;
-
-            // 새로운 데이터에서 기존에 선택된 인플루언서들의 ID만 유지
+            this.originalInfluencers = [...newInfluencers];
+            this.filteredInfluencers = [...newInfluencers];
+            // 초기 순위 부여
+            this.filteredInfluencers.forEach((inf, i) => inf.filteredRank = i + 1);
             this.selectedInfluencerIds = new Set();
             this.influencers.forEach(influencer => {
                 const influencerId = `${influencer.username}_${influencer.clean_name}`;
@@ -115,8 +79,6 @@ export class SellerMatchManager {
                     this.selectedInfluencerIds.add(influencerId);
                 }
             });
-
-            //this.renderLeftPanel();
         } catch (error) {
             console.error('인플루언서 데이터 로드 중 오류 발생:', error);
             this.leftContent.innerHTML = '<div class="error-message">데이터를 불러오는 중 오류가 발생했습니다.</div>';
@@ -158,6 +120,8 @@ export class SellerMatchManager {
                             <input type="number" id="category-percentage" min="0" max="100" value="0">
                             <span class="percentage-label">% 이상</span>
                         </div>
+                    </div>
+                    <div class="filter-row">
                         <div class="filter-group">
                             <span class="filter-label">이름검색:</span>
                             <input type="text" id="name-search" placeholder="이름 또는 유저명으로 검색">
@@ -182,28 +146,112 @@ export class SellerMatchManager {
                                 <input type="number" id="reels-views-max" placeholder="최대값" min="0">
                             </div>
                         </div>
+                        <div class="filter-group">
+                            <input type="file" id="excel-import" accept=".xlsx,.xls" style="display: none;">
+                            <button class="import-excel-button" onclick="document.getElementById('excel-import').click()">
+                                <i class="fas fa-file-excel"></i> 엑셀에서 가져오기
+                            </button>
+                        </div>
+                    </div>
+                                        <div class="filter-row">
+                        <div class="filter-group">
+                            <span class="filter-label">총 유저수:</span>
+                            <span class="total-users-count">${this.influencers.length.toLocaleString()}명</span>
+                        </div>
                     </div>
                 </div>
             `;
+
+            const CATEGORY_ORDER = [
+                '뷰티', '패션', '홈/리빙', '푸드', '육아', '건강', '맛집탐방', '전시/공연', '반려동물', '기타'
+            ];
+            const getSortIcon = (col) => {
+                if (this.sortConfig.column === col) {
+                    return this.sortConfig.direction === 'asc' ? 
+                        '<i class="fas fa-sort-up"></i>' : 
+                        '<i class="fas fa-sort-down"></i>';
+                }
+                return '<i class="fas fa-sort"></i>';
+            };
+            const getContactSortLabel = () => {
+                if (!this.contactSortTarget) return '(other)';
+                return `(${this.contactSortTarget})`;
+            };
 
             const tableHTML = `
                 ${filterHTML}
                 <div class="influencer-table-container">
                     <table class="influencer-table">
+                        <colgroup>
+                            <col style="width:32px;">
+                            <col style="width:65px;">
+                            <col style="min-width:140px;width:160px;max-width:180px;text-align:left;">
+                            <col style="min-width:100px;width:130px;max-width:180px;">
+                            <col style="min-width:90px;width:90px;max-width:90px;">
+                            <col style="min-width:50px;width:100px;max-width:120px;">
+                        </colgroup>
                         <thead>
                             <tr>
                                 <th class="checkbox-col"><input type="checkbox" id="select-all-influencers" onclick="toggleAllInfluencers(this)"></th>
-                                <th>순위</th>
-                                <th>이름(유저명)</th>
-                                <th>카테고리</th>
-                                <th>릴스뷰</th>
-                                <th>컨택</th>
+                                <th class="rank-col">
+                                    <div class="sort-header-content">
+                                        <span>순위</span>
+                                        <button class="sort-toggle" data-column="rank">
+                                            ${getSortIcon('rank')}
+                                        </button>
+                                    </div>
+                                </th>
+                                <th class="name-username-header">
+                                    <div class="sort-header-content">
+                                        <span>이름(유저명)</span>
+                                        <button class="sort-toggle" data-column="name">
+                                            ${getSortIcon('name')}
+                                        </button>
+                                    </div>
+                                </th>
+                                <th class="category-header">
+                                    <div class="sort-header-content">
+                                        <span>카테고리</span>
+                                    </div>
+                                </th>
+                                <th class="reels-views-header">
+                                    <div class="sort-header-content">
+                                        <span>릴스뷰</span>
+                                        <button class="sort-toggle" data-column="reels_views">
+                                            ${getSortIcon('reels_views')}
+                                        </button>
+                                    </div>
+                                </th>
+                                <th class="contact-method-header">
+                                    <div class="contact-header-content">
+                                        <span>컨택</span>
+                                        <button class="contact-sort-toggle" type="button">
+                                            <i class="fas fa-sort"></i>
+                                            <span class="sort-label">${this.contactSortTarget || '정렬'}</span>
+                                        </button>
+                                    </div>
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${this.influencers.map((influencer, index) => {
+                            ${this.filteredInfluencers.map((influencer, index) => {
                 const influencerId = `${influencer.username}_${influencer.clean_name}`;
                 const isChecked = this.selectedInfluencerIds.has(influencerId);
+                const collaborationEmoji = influencer.hasCollaboration ? '🤝 ' : '';
+                
+                // SNS 링크에 따른 아이콘 설정
+                let linkIcon = 'fas fa-external-link-alt';
+                if (influencer.profile_link) {
+                    if (influencer.profile_link.includes('instagram.com')) {
+                        linkIcon = 'fab fa-instagram';
+                    } else if (influencer.profile_link.includes('youtube.com')) {
+                        linkIcon = 'fab fa-youtube';
+                    } else if (influencer.profile_link.includes('tiktok.com')) {
+                        linkIcon = 'fab fa-tiktok';
+                    } else if (influencer.profile_link.includes('blog.naver.com')) {
+                        linkIcon = 'fas fa-blog';
+                    }
+                }
 
                 return `
                                     <tr class="${isChecked ? 'selected-row' : ''}">
@@ -213,12 +261,12 @@ export class SellerMatchManager {
                                                 data-influencer-id="${influencerId}"
                                                 ${isChecked ? 'checked' : ''}>
                                         </td>
-                                        <td>${index + 1}</td>
-                                        <td class="name-username" 
-                                            title="${influencer.clean_name || '-'} (${influencer.username || '-'})"
-                                            onclick="window.open('${influencer.profile_link}', '_blank')"
-                                            style="color: #0066cc;">
-                                            ${influencer.clean_name || '-'} (${influencer.username || '-'})
+                                        <td class="rank-col">${influencer.filteredRank || index + 1}</td>
+                                        <td class="name-username" title="${influencer.clean_name || '-'} (${influencer.username || '-'})">
+                                            ${collaborationEmoji}${influencer.clean_name || '-'} (${influencer.username || '-'})
+                                            <a href="${influencer.profile_link}" target="_blank" class="profile-link-icon" onclick="event.stopPropagation()">
+                                                <i class="${linkIcon}"></i>
+                                            </a>
                                         </td>
                                         <td class="category">${this.createCategoryBar(influencer.category).outerHTML}</td>
                                         <td class="reels-views">${influencer.reels_views_num.toLocaleString()}</td>
@@ -232,23 +280,74 @@ export class SellerMatchManager {
             `;
             this.leftContent.innerHTML = tableHTML;
 
-            // 필터 초기화
-            /*
-            if (window.sellerMatchFilter) {
-                window.sellerMatchFilter.container = this.leftContent.querySelector('.seller-match-filters');
-                window.sellerMatchFilter.init();
-                window.sellerMatchFilter.setOnFilterChange(() => {
-                    const filteredInfluencers = window.sellerMatchFilter.filterInfluencers(this.influencers);
-                    this.renderInfluencerTable(filteredInfluencers);
+            // 컨택 정렬 토글 버튼 이벤트
+            const contactToggleBtn = this.leftContent.querySelector('.contact-sort-toggle');
+            if (contactToggleBtn) {
+                contactToggleBtn.addEventListener('click', () => {
+                    const CONTACT_ORDER = ['other', 'inpk', 'email', 'dm', '미컨택'];
+                    let idx = this.contactSortTarget ? CONTACT_ORDER.indexOf(this.contactSortTarget) : -1;
+                    idx = (idx + 1) % CONTACT_ORDER.length;
+                    this.contactSortTarget = CONTACT_ORDER[idx];
+                    // 정렬 실행
+                    if (this.contactSortTarget) {
+                        this.filteredInfluencers.sort((a, b) => {
+                            const aVal = (a.contact_method || '').toLowerCase();
+                            const bVal = (b.contact_method || '').toLowerCase();
+                            
+                            // 미컨택인 경우 (빈 문자열)
+                            const isAEmpty = !aVal || aVal.trim() === '';
+                            const isBEmpty = !bVal || bVal.trim() === '';
+                            
+                            if (this.contactSortTarget === '미컨택') {
+                                if (isAEmpty && !isBEmpty) return -1;
+                                if (!isAEmpty && isBEmpty) return 1;
+                                // 둘 다 미컨택이거나 둘 다 미컨택이 아닌 경우 알파벳 순
+                                if (aVal < bVal) return -1;
+                                if (aVal > bVal) return 1;
+                            } else {
+                                const aHas = aVal.includes(this.contactSortTarget);
+                                const bHas = bVal.includes(this.contactSortTarget);
+                                if (aHas && !bHas) return -1;
+                                if (!aHas && bHas) return 1;
+                                // 둘 다 해당 컨택이 아니면 알파벳 오름차순, 단 미컨택은 마지막
+                                if (isAEmpty && !isBEmpty) return 1;
+                                if (!isAEmpty && isBEmpty) return -1;
+                                if (aVal < bVal) return -1;
+                                if (aVal > bVal) return 1;
+                            }
+                            return (a.filteredRank || 0) - (b.filteredRank || 0);
+                        });
+                    }
+                    this.renderInfluencerTable(this.filteredInfluencers);
                 });
             }
-            */
+
+            // 정렬 아이콘에 클릭 이벤트 추가
+            document.querySelectorAll('.sort-toggle').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const column = button.dataset.column;
+                    let newDirection;
+                    if (column === 'rank') {
+                        // 순위 컬럼: 항상 첫 클릭은 내림차순(▼)
+                        newDirection = this.sortConfig.column === column && this.sortConfig.direction === 'desc' ? 'asc' : 'desc';
+                    } else {
+                        newDirection = this.sortConfig.column === column && this.sortConfig.direction === 'asc' ? 'desc' : 'asc';
+                    }
+                    this.sortInfluencers(column, newDirection);
+                });
+            });
+
+            // 필터 초기화
             if (this.sellerMatchFilter) {
                 this.sellerMatchFilter.container = this.leftContent.querySelector('.seller-match-filters');
                 this.sellerMatchFilter.init();
                 this.sellerMatchFilter.setOnFilterChange(() => {
                     const filteredInfluencers = this.sellerMatchFilter.filterInfluencers(this.influencers);
-                    this.renderInfluencerTable(filteredInfluencers);
+                    // 순위 부여
+                    filteredInfluencers.forEach((inf, i) => inf.filteredRank = i + 1);
+                    this.filteredInfluencers = filteredInfluencers;
+                    this.renderInfluencerTable(this.filteredInfluencers);
                 });
             }
             // 체크박스 이벤트 리스너 추가
@@ -259,16 +358,116 @@ export class SellerMatchManager {
                 this.selectedInfluencerIds.has(`${influencer.username}_${influencer.clean_name}`)
             );
             this.updateCenterPanel(checkedInfluencers);
+
+            // 엑셀 파일 입력 이벤트 리스너 추가
+            const excelInput = document.getElementById('excel-import');
+            if (excelInput) {
+                excelInput.addEventListener('change', async (event) => {
+                    const file = event.target.files[0];
+                    if (file) {
+                        try {
+                            const result = await this.importUsersFromExcel(file.path);
+                            // 파일 입력 초기화
+                            event.target.value = '';
+                            
+                            // 결과 메시지 표시
+                            alert(result.message);
+                        } catch (error) {
+                            console.error('엑셀 파일 처리 중 오류:', error);
+                            alert('엑셀 파일을 처리하는 중 오류가 발생했습니다: ' + error.message);
+                        }
+                    }
+                });
+            }
         }
     }
 
     renderInfluencerTable = (influencers) => {
-        const tableBody = this.leftContent.querySelector('.influencer-table tbody');
+        const table = this.leftContent.querySelector('.influencer-table');
+        if (!table) return;
+
+        // 동적으로 헤더 생성
+        const getSortIcon = (col) => {
+            if (this.sortConfig.column === col) {
+                return this.sortConfig.direction === 'asc' ? 
+                    '<i class="fas fa-sort-up"></i>' : 
+                    '<i class="fas fa-sort-down"></i>';
+            }
+            return '<i class="fas fa-sort"></i>';
+        };
+        const getContactSortLabel = () => {
+            if (!this.contactSortTarget) return '(other)';
+            return `(${this.contactSortTarget})`;
+        };
+        const theadHTML = `
+        <thead>
+            <tr>
+                <th class="checkbox-col"><input type="checkbox" id="select-all-influencers"></th>
+                <th class="rank-col">
+                    <div class="sort-header-content">
+                        <span>순위</span>
+                        <button class="sort-toggle" data-column="rank">
+                            ${getSortIcon('rank')}
+                        </button>
+                    </div>
+                </th>
+                <th class="name-username-header">
+                    <div class="sort-header-content">
+                        <span>이름(유저명)</span>
+                        <button class="sort-toggle" data-column="name">
+                            ${getSortIcon('name')}
+                        </button>
+                    </div>
+                </th>
+                <th class="category-header"><div class="sort-header-content"><span>카테고리</span></div></th>
+                <th class="reels-views-header">
+                    <div class="sort-header-content">
+                        <span>릴스뷰</span>
+                        <button class="sort-toggle" data-column="reels_views">
+                            ${getSortIcon('reels_views')}
+                        </button>
+                    </div>
+                </th>
+                <th class="contact-method-header">
+                    <div class="contact-header-content">
+                        <span>컨택</span>
+                        <button class="contact-sort-toggle" type="button">
+                            <i class="fas fa-sort"></i>
+                            <span class="sort-label">${this.contactSortTarget || '정렬'}</span>
+                        </button>
+                    </div>
+                </th>
+            </tr>
+        </thead>
+        `;
+        table.innerHTML = theadHTML + table.innerHTML.replace(/<thead>[\s\S]*?<\/thead>/, '');
+
+        const tableBody = table.querySelector('tbody');
         if (tableBody) {
+            // 총 유저 수 업데이트
+            const totalUsersCount = document.querySelector('.total-users-count');
+            if (totalUsersCount) {
+                totalUsersCount.textContent = `${influencers.length.toLocaleString()}명`;
+            }
+
             tableBody.innerHTML = influencers.map((influencer, index) => {
                 const influencerId = `${influencer.username}_${influencer.clean_name}`;
                 const isChecked = this.selectedInfluencerIds.has(influencerId);
-
+                const collaborationEmoji = influencer.hasCollaboration ? '🤝 ' : '';
+                // SNS 링크에 따른 아이콘 설정
+                let linkIcon = 'fas fa-external-link-alt';
+                if (influencer.profile_link) {
+                    if (influencer.profile_link.includes('instagram.com')) {
+                        linkIcon = 'fab fa-instagram';
+                    } else if (influencer.profile_link.includes('youtube.com')) {
+                        linkIcon = 'fab fa-youtube';
+                    } else if (influencer.profile_link.includes('tiktok.com')) {
+                        linkIcon = 'fab fa-tiktok';
+                    } else if (influencer.profile_link.includes('blog.naver.com')) {
+                        linkIcon = 'fas fa-blog';
+                    }
+                }
+                // 현재 결과 내 순위 (filteredRank)
                 return `
                     <tr class="${isChecked ? 'selected-row' : ''}">
                         <td class="checkbox-col">
@@ -277,12 +476,12 @@ export class SellerMatchManager {
                                 data-influencer-id="${influencerId}"
                                 ${isChecked ? 'checked' : ''}>
                         </td>
-                        <td>${index + 1}</td>
-                        <td class="name-username" 
-                            title="${influencer.clean_name || '-'} (${influencer.username || '-'})"
-                            onclick="window.open('${influencer.profile_link}', '_blank')"
-                            style="color: #0066cc;">
-                            ${influencer.clean_name || '-'} (${influencer.username || '-'})
+                        <td class="rank-col">${influencer.filteredRank || index + 1}</td>
+                        <td class="name-username" title="${influencer.clean_name || '-'} (${influencer.username || '-'})">
+                            ${collaborationEmoji}${influencer.clean_name || '-'} (${influencer.username || '-'})
+                            <a href="${influencer.profile_link}" target="_blank" class="profile-link-icon" onclick="event.stopPropagation()">
+                                <i class="${linkIcon}"></i>
+                            </a>
                         </td>
                         <td class="category">${this.createCategoryBar(influencer.category).outerHTML}</td>
                         <td class="reels-views">${influencer.reels_views_num.toLocaleString()}</td>
@@ -304,6 +503,64 @@ export class SellerMatchManager {
                 this.selectedInfluencerIds.has(`${influencer.username}_${influencer.clean_name}`)
             );
             this.updateCenterPanel(checkedInfluencers);
+        }
+
+        // 정렬 아이콘에 클릭 이벤트 추가 (순위는 첫 클릭시 내림차순)
+        table.querySelectorAll('.sort-toggle').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const column = button.dataset.column;
+                let newDirection;
+                if (column === 'rank') {
+                    // 순위 컬럼: 항상 첫 클릭은 내림차순(▼)
+                    newDirection = this.sortConfig.column === column && this.sortConfig.direction === 'desc' ? 'asc' : 'desc';
+                } else {
+                    newDirection = this.sortConfig.column === column && this.sortConfig.direction === 'asc' ? 'desc' : 'asc';
+                }
+                this.sortInfluencers(column, newDirection);
+            });
+        });
+
+        // 컨택 정렬 토글 버튼 이벤트 (thead 재렌더링 후에도 연결)
+        const contactToggleBtn = table.querySelector('.contact-sort-toggle');
+        if (contactToggleBtn) {
+            contactToggleBtn.addEventListener('click', () => {
+                const CONTACT_ORDER = ['other', 'inpk', 'email', 'dm', '미컨택'];
+                let idx = this.contactSortTarget ? CONTACT_ORDER.indexOf(this.contactSortTarget) : -1;
+                idx = (idx + 1) % CONTACT_ORDER.length;
+                this.contactSortTarget = CONTACT_ORDER[idx];
+                // 정렬 실행
+                if (this.contactSortTarget) {
+                    this.filteredInfluencers.sort((a, b) => {
+                        const aVal = (a.contact_method || '').toLowerCase();
+                        const bVal = (b.contact_method || '').toLowerCase();
+                        
+                        // 미컨택인 경우 (빈 문자열)
+                        const isAEmpty = !aVal || aVal.trim() === '';
+                        const isBEmpty = !bVal || bVal.trim() === '';
+                        
+                        if (this.contactSortTarget === '미컨택') {
+                            if (isAEmpty && !isBEmpty) return -1;
+                            if (!isAEmpty && isBEmpty) return 1;
+                            // 둘 다 미컨택이거나 둘 다 미컨택이 아닌 경우 알파벳 순
+                            if (aVal < bVal) return -1;
+                            if (aVal > bVal) return 1;
+                        } else {
+                            const aHas = aVal.includes(this.contactSortTarget);
+                            const bHas = bVal.includes(this.contactSortTarget);
+                            if (aHas && !bHas) return -1;
+                            if (!aHas && bHas) return 1;
+                            // 둘 다 해당 컨택이 아니면 알파벳 오름차순, 단 미컨택은 마지막
+                            if (isAEmpty && !isBEmpty) return 1;
+                            if (!isAEmpty && isBEmpty) return -1;
+                            if (aVal < bVal) return -1;
+                            if (aVal > bVal) return 1;
+                        }
+                        return (a.filteredRank || 0) - (b.filteredRank || 0);
+                    });
+                }
+                this.renderInfluencerTable(this.filteredInfluencers);
+            });
         }
     }
 
@@ -357,17 +614,15 @@ export class SellerMatchManager {
                 }
 
                 const checkedInfluencers = self.getCheckedInfluencersData(self.influencers);
-
                 self.updateCenterPanel(checkedInfluencers);
-
             });
         });
 
         // 테이블 행 클릭 시 체크박스 토글
         document.querySelectorAll('.influencer-table tbody tr').forEach(row => {
             row.addEventListener('click', function (event) {
-                // 체크박스가 클릭된 경우는 처리하지 않음
-                if (event.target.type === 'checkbox') return;
+                // 체크박스나 링크 아이콘이 클릭된 경우는 처리하지 않음
+                if (event.target.type === 'checkbox' || event.target.closest('.profile-link-icon')) return;
 
                 // 행에 있는 체크박스 찾기
                 const checkbox = this.querySelector('.influencer-checkbox');
@@ -388,10 +643,63 @@ export class SellerMatchManager {
                 }
             });
         });
+
+        // 컬럼 리사이즈 기능 추가
+        this.addColumnResizeListeners();
+    }
+
+    // 컬럼 리사이즈 기능
+    addColumnResizeListeners = () => {
+        const tables = document.querySelectorAll('.influencer-table');
+        
+        tables.forEach(table => {
+            const headers = table.querySelectorAll('th');
+            let isResizing = false;
+            let currentHeader = null;
+            let startX = 0;
+            let startWidth = 0;
+
+            headers.forEach(header => {
+                // 체크박스 컬럼은 리사이즈 제외
+                if (header.classList.contains('checkbox-col')) return;
+
+                header.addEventListener('mousedown', (e) => {
+                    // 리사이즈 핸들 영역에서만 리사이즈 시작
+                    const rect = header.getBoundingClientRect();
+                    const handleWidth = 4;
+                    if (e.clientX > rect.right - handleWidth) {
+                        isResizing = true;
+                        currentHeader = header;
+                        startX = e.clientX;
+                        startWidth = header.offsetWidth;
+
+                        // 리사이즈 중일 때 커서 스타일 변경
+                        document.body.style.cursor = 'col-resize';
+                        document.body.style.userSelect = 'none';
+                    }
+                });
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isResizing) return;
+
+                const diff = e.clientX - startX;
+                const newWidth = Math.max(50, startWidth + diff); // 최소 너비 50px
+                currentHeader.style.width = `${newWidth}px`;
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isResizing) {
+                    isResizing = false;
+                    currentHeader = null;
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                }
+            });
+        });
     }
 
     updateCenterPanel = (selectedInfluencers) => {
-        //console.log('updateCenterPanel 호출');
         const centerPanel = this.centerContent;
         if (!centerPanel) return;
 
@@ -413,7 +721,15 @@ export class SellerMatchManager {
                     </button>
                 </div>
             </div>
+            <div class="influencer-table-container">
             <table class="influencer-table">
+                <colgroup>
+                        <col style="width:45px;">
+                        <col style="min-width:140px;width:160px;max-width:180px;text-align:left;">
+                        <col style="min-width:100px;width:130px;max-width:180px;">
+                        <col style="min-width:70px;width:70px;max-width:80px;">
+                        <col style="min-width:50px;width:60px;max-width:70px;">
+                </colgroup>
                 <thead>
                     <tr>
                         <th>제외</th>
@@ -431,6 +747,21 @@ export class SellerMatchManager {
                         const category = influencer.category || '-';
                         const reelsViews = influencer.reels_views_num ? influencer.reels_views_num.toLocaleString() : '-';
                         const influencerId = `${influencer.username}_${influencer.clean_name}`;
+                        const collaborationEmoji = influencer.hasCollaboration ? '🤝 ' : '';
+                        
+                        // SNS 링크에 따른 아이콘 설정
+                        let linkIcon = 'fas fa-external-link-alt';
+                        if (influencer.profile_link) {
+                            if (influencer.profile_link.includes('instagram.com')) {
+                                linkIcon = 'fab fa-instagram';
+                            } else if (influencer.profile_link.includes('youtube.com')) {
+                                linkIcon = 'fab fa-youtube';
+                            } else if (influencer.profile_link.includes('tiktok.com')) {
+                                linkIcon = 'fab fa-tiktok';
+                            } else if (influencer.profile_link.includes('blog.naver.com')) {
+                                linkIcon = 'fas fa-blog';
+                            }
+                        }
 
                         return `
                             <tr data-influencer-id="${influencerId}" data-clean-name="${name}">
@@ -439,10 +770,11 @@ export class SellerMatchManager {
                                         <i class="fas fa-times"></i>
                                     </button>
                                 </td>
-                                <td class="name-username" 
-                                    title="${name} (${username})"
-                                    onclick="window.open('${influencer.profile_link || '#'}', '_blank')">
-                                    ${name} (${username})
+                                <td class="name-username" title="${name} (${username})">
+                                    ${collaborationEmoji}${name} (${username})
+                                    <a href="${influencer.profile_link || '#'}" target="_blank" class="profile-link-icon" onclick="event.stopPropagation()">
+                                        <i class="${linkIcon}"></i>
+                                    </a>
                                 </td>
                                 <td class="category">${this.createCategoryBar(category).outerHTML}</td>
                                 <td class="reels-views">${reelsViews}</td>
@@ -452,6 +784,7 @@ export class SellerMatchManager {
                     }).join('')}
                 </tbody>
             </table>
+            </div>
         `;
         centerPanel.innerHTML = selectedInfluencersHTML;
 
@@ -475,15 +808,12 @@ export class SellerMatchManager {
         // 중앙 패널의 행 클릭 이벤트 추가
         centerPanel.querySelectorAll('tr[data-clean-name]').forEach(row => {
             row.addEventListener('click', async (event) => {
-                console.log('행 클릭 이벤트 발생');
-                // 제외 버튼 클릭 시에는 이벤트 처리하지 않음
-                if (event.target.closest('.exclude-button')) return;
+                // 링크 아이콘이나 제외 버튼 클릭 시에는 이벤트 처리하지 않음
+                if (event.target.closest('.profile-link-icon') || event.target.closest('.exclude-button')) return;
 
                 const cleanName = row.dataset.cleanName;
                 const influencerId = row.dataset.influencerId;
                 const username = influencerId.split('_')[0] + '_' + influencerId.split('_')[1];
-
-                console.log('선택된 인플루언서:', username);
 
                 const records = await this.dmRecordsManager.getDmRecords(cleanName);
                 const rightPanelBottom = document.querySelector('.right-panel-bottom .right-panel-content');
@@ -500,7 +830,6 @@ export class SellerMatchManager {
                 }
 
                 if (rightPanelTop) {
-                    //const brandRecords = await window.brandRecordsManager.getBrandRecords(username);
                     const brandRecords = await this.brandRecordsManager.getBrandRecords(username);
                     rightPanelTop.innerHTML = `
                         ${this.brandRecordsManager.renderBrandRecords(brandRecords)}
@@ -675,6 +1004,171 @@ export class SellerMatchManager {
         return colors[category] || '#E0E0E0';
     }
 
+    // 엑셀 파일에서 사용자 목록을 가져와 선택된 인플루언서에 추가
+    importUsersFromExcel = async (filePath) => {
+        try {
+            // 엑셀 파일 읽기
+            const data = await window.api.readExcelFile(filePath);
+            
+            if (!Array.isArray(data) || data.length <= 1) { // 헤더 행이 있어야 하므로 최소 2행 필요
+                throw new Error('엑셀 파일에서 데이터를 읽을 수 없습니다.');
+            }
+
+            // 첫 번째 행은 헤더이므로 제외하고 B 컬럼(인플루언서)과 L 컬럼(최근협업이력) 데이터 추출
+            const usernames = data.slice(1).map(row => {
+                if (!Array.isArray(row) || row.length < 12) {
+                    return { username: '', hasCollaboration: false };
+                }
+                const username = row[1] || ''; // B 컬럼
+                const collaborationHistory = row[11] || ''; // L 컬럼 (0-based index)
+                return {
+                    username: username.trim(),
+                    hasCollaboration: collaborationHistory.trim() !== ''
+                };
+            }).filter(item => item.username !== '');
+            
+            if (usernames.length === 0) {
+                throw new Error('엑셀 파일에서 인플루언서 정보를 찾을 수 없습니다.');
+            }
+
+            // 각 사용자에 대해 매칭되는 인플루언서 찾기
+            let matchedCount = 0;
+            usernames.forEach(({ username, hasCollaboration }) => {
+                const matchingInfluencer = this.influencers.find(influencer => 
+                    influencer.username === username || influencer.clean_name === username
+                );
+                
+                if (matchingInfluencer) {
+                    matchedCount++;
+                    const influencerId = `${matchingInfluencer.username}_${matchingInfluencer.clean_name}`;
+                    this.selectedInfluencerIds.add(influencerId);
+                    
+                    // 협업 이력이 있는 경우 이모티콘 추가
+                    if (hasCollaboration) {
+                        matchingInfluencer.hasCollaboration = true;
+                    }
+                }
+            });
+
+            // 좌측 패널의 체크박스 상태 업데이트
+            document.querySelectorAll('.influencer-checkbox').forEach(checkbox => {
+                const influencerId = checkbox.dataset.influencerId;
+                if (this.selectedInfluencerIds.has(influencerId)) {
+                    checkbox.checked = true;
+                    checkbox.closest('tr').classList.add('selected-row');
+                }
+            });
+
+            // 중앙 패널 업데이트
+            const checkedInfluencers = this.influencers.filter(influencer =>
+                this.selectedInfluencerIds.has(`${influencer.username}_${influencer.clean_name}`)
+            );
+            this.updateCenterPanel(checkedInfluencers);
+
+            return {
+                success: true,
+                message: `엑셀파일내 ${usernames.length}명의 사용자 중 ${matchedCount}명이 매칭되었습니다.`
+            };
+        } catch (error) {
+            console.error('엑셀 파일 읽기 중 오류 발생:', error);
+            return {
+                success: false,
+                message: error.message || '엑셀 파일을 읽는 중 오류가 발생했습니다.'
+            };
+        }
+    }
+
+    // 정렬 함수 추가
+    sortInfluencers = (column, direction) => {
+        this.sortConfig.column = column;
+        this.sortConfig.direction = direction;
+
+        const CATEGORY_ORDER = [
+            '뷰티', '패션', '홈/리빙', '푸드', '육아', '건강', '맛집탐방', '전시/공연', '반려동물', '기타'
+        ];
+
+        if (column === 'rank') {
+            if (direction === 'asc') {
+                this.filteredInfluencers = [...this.filteredInfluencers].sort((a, b) => this.originalInfluencers.indexOf(a) - this.originalInfluencers.indexOf(b));
+            } else {
+                this.filteredInfluencers = [...this.filteredInfluencers].sort((a, b) => this.originalInfluencers.indexOf(b) - this.originalInfluencers.indexOf(a));
+            }
+        } else if (column === 'category') {
+            // 카테고리별 인원수 집계 (필터된 결과 내에서)
+            const categoryCounts = {};
+            this.filteredInfluencers.forEach(inf => {
+                const mainCat = (inf.category || '').split(',')[0].replace(/\(.*\)/, '').trim();
+                if (!categoryCounts[mainCat]) categoryCounts[mainCat] = 0;
+                categoryCounts[mainCat]++;
+            });
+            this.filteredInfluencers.sort((a, b) => {
+                const catA = (a.category || '').split(',')[0].replace(/\(.*\)/, '').trim();
+                const catB = (b.category || '').split(',')[0].replace(/\(.*\)/, '').trim();
+                const countA = categoryCounts[catA] || 0;
+                const countB = categoryCounts[catB] || 0;
+                if (direction === 'asc') {
+                    return countB - countA; // 많은 순
+                } else {
+                    return countA - countB; // 적은 순
+                }
+            });
+        } else if (column === 'categoryPercent') {
+            // 카테고리별 비중 정렬 (필터된 결과 내에서)
+            if (this.categorySortTarget) {
+                this.filteredInfluencers.sort((a, b) => {
+                    const getPercent = (catStr) => {
+                        if (!catStr) return 0;
+                        const cats = catStr.split(',').map(s => s.trim());
+                        for (const c of cats) {
+                            const match = c.match(/(.+?)\((\d+)%\)/);
+                            if (match && match[1].trim() === this.categorySortTarget) {
+                                return parseInt(match[2], 10);
+                            }
+                        }
+                        return 0;
+                    };
+                    const percentA = getPercent(a.category);
+                    const percentB = getPercent(b.category);
+                    return percentB - percentA;
+                });
+            }
+        } else {
+            this.filteredInfluencers.sort((a, b) => {
+                let valueA, valueB;
+
+                switch (column) {
+                    case 'name':
+                        valueA = (a.clean_name || '').toLowerCase();
+                        valueB = (b.clean_name || '').toLowerCase();
+                        break;
+                    case 'reels_views':
+                        valueA = a.reels_views_num || 0;
+                        valueB = b.reels_views_num || 0;
+                        break;
+                    case 'contact':
+                        valueA = (a.contact_method || '').toLowerCase();
+                        valueB = (b.contact_method || '').toLowerCase();
+                        // '-'(하이픈)은 항상 마지막, 나머지는 알파벳 오름차순
+                        const isAHyphen = valueA === '-' || valueA.trim() === '';
+                        const isBHyphen = valueB === '-' || valueB.trim() === '';
+                        if (isAHyphen && !isBHyphen) return 1;
+                        if (!isAHyphen && isBHyphen) return -1;
+                        break;
+                    default:
+                        return 0;
+                }
+
+                if (direction === 'asc') {
+                    return valueA > valueB ? 1 : valueA < valueB ? -1 : 0;
+                } else {
+                    return valueA < valueB ? 1 : valueA > valueB ? -1 : 0;
+                }
+            });
+        }
+
+        // 테이블만 다시 렌더링
+        this.renderInfluencerTable(this.filteredInfluencers);
+    }
 
 }// class SellerMatchManager
 
