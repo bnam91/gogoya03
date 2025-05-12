@@ -123,13 +123,17 @@ export async function additionalPageLoad(pagePath, content) {
   // 홈 페이지 추가 콘텐츠 로드
   if (pagePath === 'tab1/home') {
     const loginBtn = content.querySelector('.login-btn');
-    loginBtn.addEventListener('click', function() {
-      window.location.href = './src/pages/member/login.html';
-    });
+    if (loginBtn) {
+      loginBtn.addEventListener('click', function() {
+        window.location.href = './src/pages/member/login.html';
+      });
+    }
     const signupBtn = content.querySelector('.signup-btn');
-    signupBtn.addEventListener('click', function() {
-      window.location.href = './src/pages/member/signup.html';
-    });
+    if (signupBtn) {
+      signupBtn.addEventListener('click', function() {
+        window.location.href = './src/pages/member/signup.html';
+      });
+    }
   }
 
   // 브랜드 컨택 페이지 추가 콘텐츠 로드
