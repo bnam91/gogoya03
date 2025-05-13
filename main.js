@@ -277,21 +277,9 @@ ipcMain.handle('upload-influencer-data', async (event, payload) => {
     try {
         const { brand, item, selectedInfluencers } = payload;
 
-        // 토큰 경로
-        const tokenPath = process.platform === 'win32'
-            ? path.join(process.env.APPDATA, 'GoogleAPI', 'token.json')
-            : path.join(os.homedir(), '.config', 'GoogleAPI', 'token.json');
-
-        if (!fs.existsSync(tokenPath)) {
-            throw new Error('토큰 파일이 존재하지 않습니다.');
-        }
-
-        const credToken = JSON.parse(fs.readFileSync(tokenPath));
-        const credentials = await import(`file://${__dirname}/token/credentials_token.js`);
-        const { client_id, client_secret } = credentials.default.installed;
-
-        const oAuth2Client = new OAuth2Client(client_id, client_secret);
-        oAuth2Client.setCredentials(credToken);
+        // auth.js의 getCredentials 함수를 사용하여 자격 증명 가져오기
+        const { getCredentials } = await import('./auth.js');
+        const oAuth2Client = await getCredentials();
 
         const sheets = google.sheets({ version: 'v4', auth: oAuth2Client });
 
@@ -367,9 +355,9 @@ ipcMain.handle('upload-influencer-data', async (event, payload) => {
         });
 
         return { success: true, count: values.length };
-    } catch (err) {
-        console.error('Google Sheet 업로드 실패:', err);
-        throw err;
+    } catch (error) {
+        console.error('Google Sheet 업로드 실패:', error);
+        throw error;
     }
 });
 
@@ -652,6 +640,63 @@ ipcMain.handle('read-excel-file', async (event, filePath) => {
         console.error('엑셀 파일 읽기 실패:', error);
         throw new Error(`엑셀 파일 읽기 실패: ${error.message}`);
     }
+});
+
+// 토큰 갱신 핸들러
+ipcMain.handle('refresh-google-token', async () => {
+    try {
+        const tokenPath = process.platform === 'win32'
+            ? path.join(process.env.APPDATA, 'GoogleAPI', 'token.json')
+            : path.join(os.homedir(), '.config', 'GoogleAPI', 'token.json');
+
+        if (!fs.existsSync(tokenPath)) {
+            throw new Error('토큰 파일이 존재하지 않습니다.');
+        }
+
+        const credToken = JSON.parse(fs.readFileSync(tokenPath));
+        const credentials = await import(`file://${__dirname}/token/credentials_token.js`);
+        const { client_id, client_secret } = credentials.default.installed;
+
+        const oAuth2Client = new OAuth2Client(client_id, client_secret);
+        oAuth2Client.setCredentials(credToken);
+
+        try {
+            // 토큰 갱신 시도
+            if (oAuth2Client.credentials.refresh_token) {
+                await oAuth2Client.refreshAccessToken();
+                // 갱신된 토큰 저장
+                fs.writeFileSync(tokenPath, JSON.stringify(oAuth2Client.credentials));
+                return { success: true };
+            } else {
+                throw new Error('갱신 토큰이 없습니다. 재인증이 필요합니다.');
+            }
+        } catch (error) {
+            // invalid_grant 오류인 경우 토큰 파일 삭제
+            if (error.message.includes('invalid_grant')) {
+                console.log('토큰이 무효화되었습니다. 토큰 파일을 삭제합니다.');
+                fs.unlinkSync(tokenPath);
+                throw new Error('토큰이 만료되었습니다. 재인증이 필요합니다.');
+            }
+            throw error;
+        }
+    } catch (error) {
+        console.error('토큰 갱신 실패:', error);
+        throw error;
+    }
+});
+
+// Google Sheets API 관련 핸들러
+ipcMain.handle('start-auth', async () => {
+  try {
+    const { creds, authUrl } = await getCredentials();
+    if (authUrl) {
+      return { authUrl };
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('인증 시작 실패:', error);
+    throw error;
+  }
 });
 
 // ===========================================

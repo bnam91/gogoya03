@@ -35,7 +35,10 @@ contextBridge.exposeInMainWorld('api', {
 });
 
 contextBridge.exposeInMainWorld('googleSheetApi', {
-  uploadInfluencerData: (uploadPayload) => ipcRenderer.invoke('upload-influencer-data', uploadPayload)
+  uploadInfluencerData: (uploadPayload) => ipcRenderer.invoke('upload-influencer-data', uploadPayload),
+  refreshToken: () => ipcRenderer.invoke('refresh-google-token'),
+  startAuth: () => ipcRenderer.invoke('start-google-auth'),
+  handleAuthCode: (code) => ipcRenderer.invoke('handle-google-auth-code')
 });
 
 contextBridge.exposeInMainWorld('gmailAuthAPI', {
