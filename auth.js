@@ -4,9 +4,8 @@ import os from 'os';
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import dotenv from 'dotenv';
-import http from 'http';
-import { URL } from 'url';
 import { shell } from 'electron';
+import { URL } from 'url';
 
 dotenv.config();
 
@@ -40,6 +39,21 @@ function ensureTokenDir() {
   if (!fs.existsSync(tokenDir)) {
     fs.mkdirSync(tokenDir, { recursive: true });
   }
+}
+
+// URL에서 인증 코드 추출 함수 (나중에 사용될 수 있음)
+function extractCodeFromUrl(url) {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.searchParams.get('code');
+  } catch (e) {
+    return null;
+  }
+}
+
+// 간소화된 인증 프로세스용 대기 함수
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function getCredentials() {
@@ -106,54 +120,46 @@ async function authenticateWithOAuth() {
   console.log('다음 URL에서 인증을 완료하세요!!:', authUrl);
   
   // 브라우저에서 인증 URL 자동으로 열기
-  shell.openExternal(authUrl);
+  // shell.openExternal(authUrl);
   
-  // 로컬 서버로 리다이렉트되는 코드를 받음
-  const code = await getAuthorizationCode();
+  // 인증 코드를 얻을 수 없으므로 인증 URL만 반환
+  console.log('=============================================');
+  console.log('⚠️ 인증 후 URL에서 코드를 복사하여 main.js에서 처리해주세요.');
+  console.log('예: http://localhost/?code=XXXX 에서 code 파라미터 값을 추출');
+  console.log('=============================================');
+  
+  // 간단한 대기 시간 추가
+  await sleep(3000);
+  
+  // 여기서는 토큰을 받지 않고 URL만 반환
+  return { oAuth2Client, authUrl };
+}
+
+// main.js에서 코드를 받아 토큰 처리를 위한 함수 추가
+async function handleAuthCode(code) {
+  if (!code) {
+    throw new Error('인증 코드가 제공되지 않았습니다.');
+  }
+  
+  const oAuth2Client = new OAuth2Client(
+    CLIENT_ID,
+    CLIENT_SECRET,
+    'http://localhost'
+  );
   
   // 코드로 토큰 얻기
   const { tokens } = await oAuth2Client.getToken(code);
   oAuth2Client.setCredentials(tokens);
   
-  return { oAuth2Client, authUrl };
-}
-
-async function getAuthorizationCode() {
-  /**
-   * 로컬 서버를 실행하고 인증 코드를 받음
-   */
-  return new Promise((resolve, reject) => {
-    const server = http.createServer(async (req, res) => {
-      try {
-        const urlParams = new URL(req.url, 'http://localhost').searchParams;
-        
-        if (urlParams.get('code')) {
-          // 인증 성공 메시지 전송
-          res.writeHead(200, { 'Content-Type': 'text/html' });
-          res.end('<h1>인증이 완료되었습니다. 이 창을 닫아도 됩니다.</h1>');
-          
-          server.close();
-          resolve(urlParams.get('code'));
-        } else {
-          // 오류 메시지 전송
-          res.writeHead(400, { 'Content-Type': 'text/html' });
-          res.end('<h1>인증에 실패했습니다.</h1>');
-          
-          server.close();
-          reject(new Error('인증 코드를 받지 못했습니다.'));
-        }
-      } catch (e) {
-        reject(e);
-      }
-    });
-    
-    server.listen(0, () => {
-      const port = server.address().port;
-      console.log(`로컬 서버가 포트 ${port}에서 실행 중입니다.`);
-    });
-  });
+  // 토큰 저장
+  const tokenPath = getTokenPath();
+  fs.writeFileSync(tokenPath, JSON.stringify(tokens));
+  
+  return oAuth2Client;
 }
 
 export {
-  getCredentials
+  getCredentials,
+  handleAuthCode,
+  extractCodeFromUrl
 };

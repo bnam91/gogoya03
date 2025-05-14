@@ -76,6 +76,80 @@ export class DmModal {
         }
     }
 
+    // 인증 코드 입력 모달
+    createAuthCodeModal() {
+        return new Promise((resolve, reject) => {
+            const modalHTML = `
+                <div id="auth-code-modal" class="modal" style="display: block; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.4);">
+                    <div class="modal-content" style="background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px;">
+                        <h3>인증 URL 입력</h3>
+                        <p>브라우저에서 인증 후 리다이렉트된 전체 URL을 붙여넣어주세요.</p>
+                        <input type="text" id="auth-code-input" style="width: 100%; padding: 8px; margin: 10px 0;" placeholder="http://localhost/?code=... 형식의 URL을 붙여넣으세요">
+                        <div style="text-align: right; margin-top: 15px;">
+                            <button id="auth-code-submit" style="padding: 8px 16px; background-color: #4CAF50; color: white; border: none; cursor: pointer;">확인</button>
+                            <button id="auth-code-cancel" style="padding: 8px 16px; margin-left: 10px; background-color: #f44336; color: white; border: none; cursor: pointer;">취소</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 기존 모달이 있다면 제거
+            const existingModal = document.getElementById('auth-code-modal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // 새 모달 추가
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+            const modal = document.getElementById('auth-code-modal');
+            const input = document.getElementById('auth-code-input');
+            const submitButton = document.getElementById('auth-code-submit');
+            const cancelButton = document.getElementById('auth-code-cancel');
+            
+            // URL에서 코드 추출 함수
+            const extractCodeFromUrl = (url) => {
+                try {
+                    const urlObj = new URL(url);
+                    return urlObj.searchParams.get('code');
+                } catch (e) {
+                    // URL이 아닌 경우 입력값 그대로 반환
+                    return url;
+                }
+            };
+            
+            submitButton.addEventListener('click', () => {
+                const inputValue = input.value.trim();
+                const code = extractCodeFromUrl(inputValue);
+                if (code) {
+                    modal.remove();
+                    resolve(code);
+                } else {
+                    alert('유효한 코드를 찾을 수 없습니다. URL을 다시 확인해주세요.');
+                }
+            });
+            
+            cancelButton.addEventListener('click', () => {
+                modal.remove();
+                reject(new Error('인증이 취소되었습니다.'));
+            });
+            
+            // Enter 키 이벤트 처리
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const inputValue = input.value.trim();
+                    const code = extractCodeFromUrl(inputValue);
+                    if (code) {
+                        modal.remove();
+                        resolve(code);
+                    } else {
+                        alert('유효한 코드를 찾을 수 없습니다. URL을 다시 확인해주세요.');
+                    }
+                }
+            });
+        });
+    }
+
     async upload() {
         const originalText = this.uploadButton.innerHTML;
         try {
@@ -147,7 +221,33 @@ export class DmModal {
                 
                 // 인증 관련 에러 처리
                 if (error.message.includes('인증이 필요합니다') || error.message.includes('invalid_grant')) {
-                    alert('Google 계정 인증이 필요합니다. 다시 시도해주세요.');
+                    alert('Google 계정 인증이 필요합니다. 인증 과정을 시작합니다.');
+                    
+                    try {
+                        // 인증 시작
+                        const response = await window.googleSheetApi.startAuth();
+                        
+                        if (response.authUrl) {
+                            // 사용자에게 인증 코드 입력 요청
+                            const code = await this.createAuthCodeModal();
+                            
+                            if (code) {
+                                // 인증 코드 처리
+                                const authResult = await window.googleSheetApi.handleAuthCode(code);
+                                
+                                if (authResult.success) {
+                                    alert('인증이 완료되었습니다. 다시 업로드를 시도합니다.');
+                                    // 업로드 재시도
+                                    await this.upload();
+                                } else {
+                                    throw new Error('인증 실패: ' + (authResult.error || '알 수 없는 오류'));
+                                }
+                            }
+                        }
+                    } catch (authError) {
+                        console.error('인증 과정 중 오류:', authError);
+                        alert('인증 과정 중 오류가 발생했습니다: ' + authError.message);
+                    }
                 } else {
                     alert('업로드 중 오류가 발생했습니다: ' + error.message);
                 }

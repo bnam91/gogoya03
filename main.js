@@ -271,7 +271,21 @@ ipcMain.handle('upload-influencer-data', async (event, payload) => {
 
         // auth.js의 getCredentials 함수를 사용하여 자격 증명 가져오기
         const { getCredentials } = await import('./auth.js');
-        const oAuth2Client = await getCredentials();
+        const result = await getCredentials();
+        
+        let oAuth2Client;
+        
+        // authUrl이 있으면 인증이 필요한 상태
+        if (result.authUrl) {
+            throw new Error('인증이 필요합니다. 다시 시도해주세요.');
+        }
+        
+        // creds 객체가 있으면 인증된 상태
+        if (result.creds) {
+            oAuth2Client = result.creds;
+        } else {
+            throw new Error('인증 객체를 가져올 수 없습니다.');
+        }
 
         const sheets = google.sheets({ version: 'v4', auth: oAuth2Client });
 
@@ -688,6 +702,34 @@ ipcMain.handle('start-auth', async () => {
     return { success: true };
   } catch (error) {
     console.error('인증 시작 실패:', error);
+    throw error;
+  }
+});
+
+// 구글 인증 코드 처리 핸들러 추가
+ipcMain.handle('handle-google-auth-code', async (event, code) => {
+    try {
+        const { handleAuthCode } = await import('./auth.js');
+        const auth = await handleAuthCode(code);
+        return { success: true };
+    } catch (error) {
+        console.error('인증 코드 처리 실패:', error);
+        return { success: false, error: error.message };
+    }
+});
+
+// 구글 인증 시작 핸들러
+ipcMain.handle('start-google-auth', async () => {
+  try {
+    const { getCredentials } = await import('./auth.js');
+    const { authUrl } = await getCredentials();
+    if (authUrl) {
+      // 인증 URL 열기는 이미 auth.js에서 처리됨
+      return { authUrl };
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('구글 인증 시작 실패:', error);
     throw error;
   }
 });
