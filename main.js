@@ -682,6 +682,7 @@ ipcMain.handle('start-auth', async () => {
   try {
     const { creds, authUrl } = await getCredentials();
     if (authUrl) {
+      shell.openExternal(authUrl); // 브라우저로 인증 URL 열기
       return { authUrl };
     }
     return { success: true };

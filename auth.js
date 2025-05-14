@@ -6,6 +6,7 @@ import { OAuth2Client } from 'google-auth-library';
 import dotenv from 'dotenv';
 import http from 'http';
 import { URL } from 'url';
+import { shell } from 'electron';
 
 dotenv.config();
 
@@ -62,26 +63,13 @@ async function getCredentials() {
   
   // 토큰이 없거나 유효하지 않으면 새로 생성
   if (!creds || !isTokenValid(creds)) {
-    if (creds && creds.credentials.refresh_token) {
-      // 토큰이 만료되었지만 갱신 가능하면 갱신
-      try {
-        await creds.refreshAccessToken();
-      } catch (err) {
-        // 갱신 실패 시 새로 인증
-        const { oAuth2Client, authUrl } = await authenticateWithOAuth();
-        creds = oAuth2Client;
-        return { creds, authUrl };
-      }
-    } else {
-      // 새로 OAuth2 플로우를 통해 인증
-      const { oAuth2Client, authUrl } = await authenticateWithOAuth();
-      creds = oAuth2Client;
-      return { creds, authUrl };
-    }
-    
-    // 생성된 토큰을 파일에 저장
-    fs.writeFileSync(tokenPath, JSON.stringify(creds.credentials));
+    const { oAuth2Client, authUrl } = await authenticateWithOAuth();
+    // 인증 URL만 반환하고, 인증 코드는 main.js에서 처리
+    return { authUrl };
   }
+  
+  // 생성된 토큰을 파일에 저장
+  fs.writeFileSync(tokenPath, JSON.stringify(creds.credentials));
   
   return { creds };
 }
@@ -116,6 +104,9 @@ async function authenticateWithOAuth() {
   });
   
   console.log('다음 URL에서 인증을 완료하세요!!:', authUrl);
+  
+  // 브라우저에서 인증 URL 자동으로 열기
+  shell.openExternal(authUrl);
   
   // 로컬 서버로 리다이렉트되는 코드를 받음
   const code = await getAuthorizationCode();
