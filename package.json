@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node scripts/run-electron.cjs production",
-    "dev": "node scripts/run-electron.cjs development",
+    "dev": "chcp 65001 && nodemon --exec electron . --watch . --ext js,json",
     "build": "electron-builder build --win --publish never",
     "deploy": "electron-builder build --win --publish always",
     "fix-encoding": "node -e \"require('fs').writeFileSync('VERSION.txt', require('fs').readFileSync('VERSION.txt', 'utf8'), 'utf8')\""
@@ -40,6 +40,8 @@
   "devDependencies": {
     "cross-env": "^7.0.3",
     "electron-builder": "^24.13.3",
-    "electron-reloader": "^1.2.3"
+    "electron-reloader": "^1.2.3",
+    "electronmon": "^2.0.3",
+    "nodemon": "^3.1.10"
   }
 }

@@ -28,14 +28,6 @@ let authInstance; // 전역에 저장
 process.env.CHARSET = 'UTF-8';
 process.env.LANG = 'ko_KR.UTF-8';
 
-// 개발 모드에서 자동 리로드 활성화
-try {
-    require('electron-reloader')(module, {
-        debug: true,
-        watchRenderer: true
-    });
-} catch (_) { console.log('Error'); }
-
 let mainWindow;
 
 // 자동 업데이트 설정
