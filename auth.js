@@ -120,7 +120,7 @@ async function authenticateWithOAuth() {
   console.log('다음 URL에서 인증을 완료하세요!!:', authUrl);
   
   // 브라우저에서 인증 URL 자동으로 열기
-  // shell.openExternal(authUrl);
+  shell.openExternal(authUrl);
   
   // 인증 코드를 얻을 수 없으므로 인증 URL만 반환
   console.log('=============================================');

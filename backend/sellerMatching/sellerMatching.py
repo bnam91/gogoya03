@@ -482,14 +482,3 @@ try:
 
 except Exception as e:
     print(f"오류 발생: {e}")
-
-# JSON 파일 로드 함수
-def load_json(file_path):
-    with open(file_path, 'r', encoding='utf-8') as f:
-        return json.load(f)
-
-# 브랜드와 인플루언서 데이터 로드
-print("\nJSON 파일 로드 중...")
-brands = load_json('머신러닝/brand.json')
-influencers = load_json('머신러닝/influencer_data.json')
-print("JSON 파일 로드 완료!")
