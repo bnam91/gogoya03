@@ -6,3 +6,4 @@ config.js
 src/js/vendor_request/token/*
 token/*
 temp/
+**matchingRaw/

@@ -10,6 +10,8 @@ from konlpy.tag import Okt
 from sklearn.feature_extraction.text import CountVectorizer
 from datetime import datetime, timedelta
 import pandas as pd
+import os
+import subprocess
 
 def calculate_similarity(brand_tags, influencer_tags):
     # 1. 정확한 매칭 점수 계산
@@ -231,7 +233,7 @@ def calculate_tag_similarity(bas_top_tags, influencer_tags, user_keywords=None):
 # MongoDB 연결 설정
 print("\nMongoDB 연결 중...")
 uri = "mongodb+srv://coq3820:JmbIOcaEOrvkpQo1@cluster0.qj1ty.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-client = MongoClient(uri, server_api=ServerApi('1'))
+client = MongoClient(uri, server_api=ServerApi('1'), tlsAllowInvalidCertificates=True)
 
 try:
     # 연결 확인
@@ -406,10 +408,25 @@ try:
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
     excel_filename = f"{brand_name}_인플루언서_매칭결과_{current_time}.xlsx"
     
-    # 엑셀 파일로 저장
-    df.to_excel(excel_filename, index=False, engine='openpyxl')
-    print(f"\n분석 결과가 '{excel_filename}' 파일로 저장되었습니다.")
+    # 저장 디렉토리 설정
+    save_dir = "matchingRaw"
+    # 디렉토리가 없으면 생성
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    save_path = os.path.join(save_dir, excel_filename)
     
+    # 엑셀 파일로 저장
+    df.to_excel(save_path, index=False, engine='openpyxl')
+    print(f"\n분석 결과가 '{save_path}' 파일로 저장되었습니다.")
+    
+    # 저장된 폴더 열기
+    try:
+        # Windows에서 폴더 열기
+        subprocess.Popen(['explorer', os.path.abspath(save_dir)])
+        print(f"'{save_dir}' 폴더가 열렸습니다.")
+    except Exception as e:
+        print(f"폴더를 열지 못했습니다: {e}")
+        
     # 결과 출력
     print(f"\n[분석 결과 요약]")
     print(f"브랜드 총 협업 인플루언서 수: {len(brand_influencers)}명")
