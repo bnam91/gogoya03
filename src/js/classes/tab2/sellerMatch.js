@@ -1059,13 +1059,13 @@ export class SellerMatchManager {
                 throw new Error('엑셀 파일에서 데이터를 읽을 수 없습니다.');
             }
 
-            // 첫 번째 행은 헤더이므로 제외하고 B 컬럼(인플루언서)과 L 컬럼(최근협업이력) 데이터 추출
+            // 첫 번째 행은 헤더이므로 제외하고 B 컬럼(인플루언서)과 M 컬럼(최근협업이력) 데이터 추출
             const usernames = data.slice(1).map(row => {
-                if (!Array.isArray(row) || row.length < 12) {
+                if (!Array.isArray(row) || row.length < 13) {
                     return { username: '', hasCollaboration: false };
                 }
                 const username = row[1] || ''; // B 컬럼
-                const collaborationHistory = row[11] || ''; // L 컬럼 (0-based index)
+                const collaborationHistory = row[12] || ''; // M 컬럼 (최근협업이력)
                 return {
                     username: username.trim(),
                     hasCollaboration: collaborationHistory.trim() !== ''

@@ -453,8 +453,8 @@ try:
         rank = score_to_rank.get(influencer['username'], total_candidates)
         preferred_score = ((total_candidates - rank + 1) / total_candidates) * 100
         
-        # 최종 점수 계산 (카테고리 17.5%, 조회수 17.5%, 태그유사도 35%, 선호브랜드 30%)
-        final_score = (category_score * 0.175) + (views_score * 0.175) + (tag_score * 0.35) + (preferred_score * 0.3)
+        # 최종 점수 계산 (카테고리 20%, 조회수 20%, 태그유사도 25%, 선호브랜드 35%)
+        final_score = (category_score * 0.2) + (views_score * 0.2) + (tag_score * 0.25) + (preferred_score * 0.35)
         
         influencer_scores.append({
             'username': influencer['username'],
@@ -472,7 +472,7 @@ try:
     # 점수 기준으로 정렬하여 상위 60명 선정
     influencer_scores.sort(key=lambda x: x['final_score'], reverse=True)
     top_60 = influencer_scores[:60]
-    
+
     # 결과를 DataFrame으로 변환
     results_data = []
     for influencer in top_60:
@@ -533,63 +533,6 @@ try:
     # DataFrame 생성
     df = pd.DataFrame(results_data)
     
-    # 상위 3명의 점수 계산 상세 내역을 txt 파일에 추가
-    score_analysis_filename = f"{brand_info['name']}_top3_score_analysis_{current_time}.txt"
-    score_analysis_path = os.path.join(save_dir, score_analysis_filename)
-    
-    with open(score_analysis_path, 'w', encoding='utf-8') as f:
-        f.write(f"[{brand_info['name']} 브랜드 상위 3명 인플루언서 점수 계산 상세 내역]\n")
-        f.write("=" * 80 + "\n\n")
-        
-        for _, influencer in df.head(3).iterrows():
-            f.write(f"순위: {influencer['순위']}위\n")
-            f.write(f"인플루언서: {influencer['인플루언서']}\n")
-            f.write("-" * 50 + "\n")
-            
-            # 카테고리 점수 상세
-            f.write("[카테고리 점수 계산]\n")
-            f.write(f"카테고리: {influencer['카테고리']}\n")
-            f.write(f"주요 카테고리: {main_category} (평균 비율: {main_category_avg:.1f}%)\n")
-            f.write(f"카테고리 점수: {influencer['카테고리점수']:.1f}점 (가중치: 17.5%)\n")
-            f.write(f"→ 최종 반영 점수: {influencer['카테고리점수'] * 0.175:.1f}점\n\n")
-            
-            # 조회수 점수 상세
-            f.write("[조회수 점수 계산]\n")
-            f.write(f"릴스 평균 조회수: {influencer['릴스평균조회수']}\n")
-            f.write(f"목표 조회수 중앙값: {target_views:,.0f}\n")
-            f.write(f"전체 구간 평균 조회수: {avg_views:,.0f}\n")
-            f.write(f"조회수 점수: {influencer['조회수점수']:.1f}점 (가중치: 17.5%)\n")
-            f.write(f"→ 최종 반영 점수: {influencer['조회수점수'] * 0.175:.1f}점\n\n")
-            
-            # 태그 유사도 점수 상세
-            f.write("[태그 유사도 점수 계산]\n")
-            f.write(f"주요 태그: {influencer['주요태그']}\n")
-            f.write(f"태그 유사도 점수: {influencer['태그유사도점수']:.1f}점 (가중치: 35%)\n")
-            f.write(f"→ 최종 반영 점수: {influencer['태그유사도점수'] * 0.35:.1f}점\n\n")
-            
-            # 선호 브랜드 점수 상세
-            f.write("[선호 브랜드 점수 계산]\n")
-            f.write(f"전체 선호 브랜드 수: {total_preferred}개\n")
-            influencer_brands = set()
-            for brand_data_item in influencer_collection.find_one({"username": influencer['인플루언서']}).get('brand', []):
-                brand_name = brand_data_item.get('name', '')
-                if brand_name in preferred_brands:
-                    influencer_brands.add(brand_name)
-            f.write(f"협업한 선호 브랜드: {', '.join(influencer_brands) if influencer_brands else '없음'}\n")
-            f.write(f"선호 브랜드 점수: {influencer['선호브랜드점수']:.1f}점 (가중치: 30%)\n")
-            f.write(f"→ 최종 반영 점수: {influencer['선호브랜드점수'] * 0.3:.1f}점\n\n")
-            
-            # 최종 점수 요약
-            f.write("[최종 점수 요약]\n")
-            f.write(f"카테고리 점수: {influencer['카테고리점수'] * 0.175:.1f}점\n")
-            f.write(f"조회수 점수: {influencer['조회수점수'] * 0.175:.1f}점\n")
-            f.write(f"태그 유사도 점수: {influencer['태그유사도점수'] * 0.35:.1f}점\n")
-            f.write(f"선호 브랜드 점수: {influencer['선호브랜드점수'] * 0.3:.1f}점\n")
-            f.write(f"최종 점수: {influencer['최종점수']:.1f}점\n")
-            f.write("=" * 80 + "\n\n")
-    
-    print(f"\n상위 3명의 점수 계산 상세 내역이 '{score_analysis_filename}' 파일로 저장되었습니다.")
-    
     # 현재 시간을 파일명에 포함
     excel_filename = f"{brand_info['name']}_인플루언서_매칭결과_{current_time}.xlsx"
     save_path = os.path.join(save_dir, excel_filename)
@@ -613,10 +556,10 @@ try:
     print(f"전체 구간 평균 조회수: {avg_views:,.0f}")
     print(f"주요 카테고리: {main_category} (평균 비율: {main_category_avg:.1f}%)")
     print("\n[점수 계산 가중치]")
-    print("- 카테고리 점수: 17.5%")
-    print("- 조회수 점수: 17.5%")
-    print("- 태그 유사도 점수: 35%")
-    print("- 선호 브랜드 점수: 30%")
+    print("- 카테고리 점수: 20%")
+    print("- 조회수 점수: 20%")
+    print("- 태그 유사도 점수: 25%")
+    print("- 선호 브랜드 점수: 35%")
     print(f"\n{brand_info['name']} 인플루언서 상위 20개 태그:")
     for tag, count in top_tags:
         print(f"- {tag}: {count}회 사용")
