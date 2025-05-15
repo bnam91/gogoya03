@@ -39,8 +39,10 @@ const owner = process.env.GITHUB_OWNER || 'bnam91';
 const repo = process.env.GITHUB_REPO || 'gogoya03';
 
 // 개발 모드 확인
-const isDev = process.env.NODE_ENV === 'development';
+const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('--dev');
 console.log('현재 모드:', isDev ? '개발 모드' : '프로덕션 모드');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('실행 경로:', process.execPath);
 
 // __dirname 직접 생성
 const __filename = fileURLToPath(import.meta.url);
@@ -824,6 +826,11 @@ async function checkGitUpdate() {
         const latestRelease = await updater.getLatestRelease();
         console.log('최신 릴리즈:', latestRelease);
 
+        if (!latestRelease) {
+            console.log('최신 릴리즈 정보를 가져올 수 없습니다.');
+            return;
+        }
+
         const updateResult = await updater.updateToLatest();
         console.log('업데이트 결과:', updateResult);
 
@@ -864,7 +871,13 @@ app.whenReady().then(async () => {
         await checkGitUpdate();
     } else {
         console.log('프로덕션 모드에서 electron-updater 시작');
-        autoUpdater.checkForUpdates();
+        // 개발 모드가 아니더라도 패키징되지 않은 상태에서는 release_updater 사용
+        if (!app.isPackaged) {
+            console.log('패키징되지 않은 상태에서 release_updater 사용');
+            await checkGitUpdate();
+        } else {
+            autoUpdater.checkForUpdates();
+        }
     }
 
     app.on('activate', () => {

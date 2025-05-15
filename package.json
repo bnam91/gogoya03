@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node scripts/run-electron.cjs production",
-    "dev": "chcp 65001 && nodemon --exec electron . --watch . --ext js,json",
+    "dev": "set NODE_ENV=development && chcp 65001 && nodemon --exec electron . --watch . --ext js,json",
     "build": "electron-builder build --win --publish never",
     "deploy": "electron-builder build --win --publish always",
     "fix-encoding": "node -e \"require('fs').writeFileSync('VERSION.txt', require('fs').readFileSync('VERSION.txt', 'utf8'), 'utf8')\""
