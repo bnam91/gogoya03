@@ -129,7 +129,7 @@ def calculate_category_score(influencer_category, brand_collaboration_data):
                     if cat_name not in category_distribution:
                         category_distribution[cat_name] = []
                     category_distribution[cat_name].append(percentage)
-    
+                    
                     # 카테고리 출현 빈도 계산
                     if cat_name not in category_frequency:
                         category_frequency[cat_name] = 0
@@ -254,13 +254,6 @@ try:
     client.admin.command('ping')
     print("MongoDB 연결 성공!")
     
-    # 현재 시간과 저장 디렉토리 설정
-    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    save_dir = os.path.join(current_dir, "matchingRaw")
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-    
     # 데이터베이스와 컬렉션 선택
     db = client['insta09_database']
     brand_collection = db['08_main_brand_category_data']
@@ -309,16 +302,6 @@ try:
     brand_influencers = set()
     print("\n[협업 인플루언서 정보]")
     print("-" * 50)
-    
-    # 협업 이력 정보를 저장할 리스트
-    collaboration_history = []
-    
-    # 3개월 전 날짜 계산
-    three_months_ago = datetime.now() - timedelta(days=90)
-    
-    # 인플루언서별로 그룹화
-    influencer_groups = {}
-    
     for data in brand_data:
         username = data.get('username')
         category = data.get('category', '')
@@ -334,48 +317,62 @@ try:
             except (ValueError, TypeError):
                 print(f"릴스평균조회수: {views}")
             print("-" * 50)
-            
-            # 해당 인플루언서의 모든 브랜드 협업 이력 조회
-            influencer_collaborations = list(influencer_collection.find({
-                "username": username,
-                "brand": {"$exists": True}
-            }))
-            
-            # 협업 이력 정보 수집 (최근 3개월 데이터만)
-            for collab in influencer_collaborations:
-                for brand in collab.get('brand', []):
-                    brand_name = brand.get('name', '')
-                    # '확인필요' 브랜드와 'N' 브랜드 제외
-                    if brand_name == '확인필요' or brand_name == 'N':
-                        continue
+    
+    print(f"\n{brand_name}와 이미 협업한 인플루언서 수: {len(brand_influencers)}명")
+    
+    # 브랜드 협업 인플루언서들의 카테고리 분석 정보를 텍스트 파일로 저장
+    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+    analysis_filename = f"{brand_name}_category_analysis_{current_time}.txt"
+    
+    with open(analysis_filename, 'w', encoding='utf-8') as f:
+        f.write(f"[{brand_name} 브랜드 협업 인플루언서 카테고리 분석]\n")
+        f.write("-" * 50 + "\n")
+        f.write(f"총 협업 인플루언서 수: {len(brand_influencers)}명\n")
+        f.write("-" * 50 + "\n\n")
+        
+        # 카테고리 분포 분석
+        category_distribution = {}
+        category_frequency = {}
+        total_influencers = len(brand_data)
+        
+        for data in brand_data:
+            category = data.get('category', '')
+            if category:
+                categories = category.split(',')
+                for cat in categories:
+                    if '(' in cat:
+                        cat_name = cat.split('(')[0].strip()
+                        percentage = int(cat.split('(')[1].split('%')[0])
                         
-                    for product in brand.get('products', []):
-                        mentioned_date = datetime.strptime(product.get('mentioned_date', ''), "%Y-%m-%dT%H:%M:%S.%fZ")
-                        if mentioned_date >= three_months_ago:
-                            if username not in influencer_groups:
-                                influencer_groups[username] = set()
-                            influencer_groups[username].add(brand_name)
+                        if cat_name not in category_distribution:
+                            category_distribution[cat_name] = []
+                        category_distribution[cat_name].append(percentage)
+                        
+                        if cat_name not in category_frequency:
+                            category_frequency[cat_name] = 0
+                        category_frequency[cat_name] += 1
+        
+        # 카테고리별 점수 계산
+        category_scores = {}
+        for category, percentages in category_distribution.items():
+            avg_percentage = sum(percentages) / len(percentages)
+            frequency_score = (category_frequency[category] / total_influencers) * 100
+            final_score = (frequency_score * 0.6) + (avg_percentage * 0.4)
+            category_scores[category] = final_score
+        
+        # 결과 저장
+        f.write("[카테고리 분석 상세 정보]\n")
+        f.write("-" * 50 + "\n")
+        for category, score in sorted(category_scores.items(), key=lambda x: x[1], reverse=True):
+            freq = category_frequency[category]
+            avg = sum(category_distribution[category]) / len(category_distribution[category])
+            f.write(f"카테고리: {category}\n")
+            f.write(f"- 출현 빈도: {freq}명 ({freq/total_influencers*100:.1f}%)\n")
+            f.write(f"- 평균 비율: {avg:.1f}%\n")
+            f.write(f"- 최종 점수: {score:.1f}\n")
+            f.write("-" * 50 + "\n")
     
-    # 모든 브랜드 목록 수집
-    all_brands = set()
-    for brands in influencer_groups.values():
-        all_brands.update(brands)
-    
-    # 각 브랜드별 인플루언서 수 계산
-    brand_counts = {}
-    for brand in all_brands:
-        count = sum(1 for brands in influencer_groups.values() if brand in brands)
-        brand_counts[brand] = count
-    
-    # 인플루언서 수 기준으로 정렬
-    sorted_brands = sorted(brand_counts.items(), key=lambda x: x[1], reverse=True)
-    
-    # 상위 20% 브랜드 선정 (20%가 15개 미만이면 상위 15개 사용)
-    top_20_percent = max(15, int(len(sorted_brands) * 0.2))
-    max_brands = min(top_20_percent, len(sorted_brands))
-    filtered_brands = sorted_brands[:max_brands]
-    
-    print(f"\n{brand_info['name']}와 이미 협업한 인플루언서 수: {len(brand_influencers)}명")
+    print(f"\n카테고리 분석 정보가 '{analysis_filename}' 파일로 저장되었습니다.")
     
     # 브랜드 인플루언서들의 상위 태그 분석
     top_tags = analyze_top_tags(brand_data)
@@ -384,43 +381,6 @@ try:
     print("\n전체 인플루언서 데이터 조회 중...")
     all_influencers = list(influencer_collection.find({}))
     print(f"전체 인플루언서 수: {len(all_influencers)}명")
-    
-    # 선호 브랜드 추출 (협업 인플루언서 2명 이상)
-    preferred_brands = [brand for brand, count in filtered_brands]
-    total_preferred = len(preferred_brands)
-    if total_preferred == 0:
-        preferred_brands = set()
-    else:
-        preferred_brands = set(preferred_brands)
-    
-    # 선호 브랜드별 인기도(협업 인플루언서 수) 딕셔너리 생성
-    preferred_brand_weights = {brand: count for brand, count in filtered_brands}
-    
-    # 모든 인플루언서의 선호 브랜드 협업 점수 계산
-    all_influencer_scores = []
-    for influencer in all_influencers:
-        if influencer['username'] in brand_influencers:
-            continue
-            
-        brand_weight_sum = 0
-        for brand_data_item in influencer.get('brand', []):
-            brand_name = brand_data_item.get('name', '')
-            if brand_name in preferred_brand_weights:
-                brand_weight_sum += preferred_brand_weights[brand_name]
-        
-        all_influencer_scores.append({
-            'username': influencer['username'],
-            'score': brand_weight_sum
-        })
-    
-    # 점수 기준으로 정렬
-    all_influencer_scores.sort(key=lambda x: x['score'], reverse=True)
-    total_candidates = len(all_influencer_scores)
-    
-    # 점수-순위 매핑 딕셔너리 생성
-    score_to_rank = {}
-    for rank, data in enumerate(all_influencer_scores, 1):
-        score_to_rank[data['username']] = rank
     
     # 각 인플루언서의 카테고리 점수와 조회수 점수 계산
     print("\n점수 계산 중...")
@@ -449,12 +409,8 @@ try:
             main_category = main_cat
             main_category_avg = main_avg
         
-        # 순위 기반 백분율 점수 계산 (상위 순위일수록 높은 점수)
-        rank = score_to_rank.get(influencer['username'], total_candidates)
-        preferred_score = ((total_candidates - rank + 1) / total_candidates) * 100
-        
-        # 최종 점수 계산 (카테고리 17.5%, 조회수 17.5%, 태그유사도 35%, 선호브랜드 30%)
-        final_score = (category_score * 0.175) + (views_score * 0.175) + (tag_score * 0.35) + (preferred_score * 0.3)
+        # 최종 점수 계산 (카테고리 30%, 조회수 30%, 태그 유사도 40%)
+        final_score = (category_score * 0.3) + (views_score * 0.3) + (tag_score * 0.4)
         
         influencer_scores.append({
             'username': influencer['username'],
@@ -462,7 +418,6 @@ try:
             'category_score': category_score,
             'views_score': views_score,
             'tag_score': tag_score,
-            'preferred_score': preferred_score,
             'category': category,
             'views': views,
             'tags': tags,
@@ -522,7 +477,6 @@ try:
             '카테고리점수': round(influencer['category_score'], 1),
             '조회수점수': round(influencer['views_score'], 1),
             '태그유사도점수': round(influencer['tag_score'], 1),
-            '선호브랜드점수': influencer.get('preferred_score', 0),
             '카테고리': influencer['category'],
             '릴스평균조회수': influencer['views'],
             '가성비인플루언서': 'O' if is_cost_effective else 'X',
@@ -533,65 +487,16 @@ try:
     # DataFrame 생성
     df = pd.DataFrame(results_data)
     
-    # 상위 3명의 점수 계산 상세 내역을 txt 파일에 추가
-    score_analysis_filename = f"{brand_info['name']}_top3_score_analysis_{current_time}.txt"
-    score_analysis_path = os.path.join(save_dir, score_analysis_filename)
-    
-    with open(score_analysis_path, 'w', encoding='utf-8') as f:
-        f.write(f"[{brand_info['name']} 브랜드 상위 3명 인플루언서 점수 계산 상세 내역]\n")
-        f.write("=" * 80 + "\n\n")
-        
-        for _, influencer in df.head(3).iterrows():
-            f.write(f"순위: {influencer['순위']}위\n")
-            f.write(f"인플루언서: {influencer['인플루언서']}\n")
-            f.write("-" * 50 + "\n")
-            
-            # 카테고리 점수 상세
-            f.write("[카테고리 점수 계산]\n")
-            f.write(f"카테고리: {influencer['카테고리']}\n")
-            f.write(f"주요 카테고리: {main_category} (평균 비율: {main_category_avg:.1f}%)\n")
-            f.write(f"카테고리 점수: {influencer['카테고리점수']:.1f}점 (가중치: 17.5%)\n")
-            f.write(f"→ 최종 반영 점수: {influencer['카테고리점수'] * 0.175:.1f}점\n\n")
-            
-            # 조회수 점수 상세
-            f.write("[조회수 점수 계산]\n")
-            f.write(f"릴스 평균 조회수: {influencer['릴스평균조회수']}\n")
-            f.write(f"목표 조회수 중앙값: {target_views:,.0f}\n")
-            f.write(f"전체 구간 평균 조회수: {avg_views:,.0f}\n")
-            f.write(f"조회수 점수: {influencer['조회수점수']:.1f}점 (가중치: 17.5%)\n")
-            f.write(f"→ 최종 반영 점수: {influencer['조회수점수'] * 0.175:.1f}점\n\n")
-            
-            # 태그 유사도 점수 상세
-            f.write("[태그 유사도 점수 계산]\n")
-            f.write(f"주요 태그: {influencer['주요태그']}\n")
-            f.write(f"태그 유사도 점수: {influencer['태그유사도점수']:.1f}점 (가중치: 35%)\n")
-            f.write(f"→ 최종 반영 점수: {influencer['태그유사도점수'] * 0.35:.1f}점\n\n")
-            
-            # 선호 브랜드 점수 상세
-            f.write("[선호 브랜드 점수 계산]\n")
-            f.write(f"전체 선호 브랜드 수: {total_preferred}개\n")
-            influencer_brands = set()
-            for brand_data_item in influencer_collection.find_one({"username": influencer['인플루언서']}).get('brand', []):
-                brand_name = brand_data_item.get('name', '')
-                if brand_name in preferred_brands:
-                    influencer_brands.add(brand_name)
-            f.write(f"협업한 선호 브랜드: {', '.join(influencer_brands) if influencer_brands else '없음'}\n")
-            f.write(f"선호 브랜드 점수: {influencer['선호브랜드점수']:.1f}점 (가중치: 30%)\n")
-            f.write(f"→ 최종 반영 점수: {influencer['선호브랜드점수'] * 0.3:.1f}점\n\n")
-            
-            # 최종 점수 요약
-            f.write("[최종 점수 요약]\n")
-            f.write(f"카테고리 점수: {influencer['카테고리점수'] * 0.175:.1f}점\n")
-            f.write(f"조회수 점수: {influencer['조회수점수'] * 0.175:.1f}점\n")
-            f.write(f"태그 유사도 점수: {influencer['태그유사도점수'] * 0.35:.1f}점\n")
-            f.write(f"선호 브랜드 점수: {influencer['선호브랜드점수'] * 0.3:.1f}점\n")
-            f.write(f"최종 점수: {influencer['최종점수']:.1f}점\n")
-            f.write("=" * 80 + "\n\n")
-    
-    print(f"\n상위 3명의 점수 계산 상세 내역이 '{score_analysis_filename}' 파일로 저장되었습니다.")
-    
     # 현재 시간을 파일명에 포함
-    excel_filename = f"{brand_info['name']}_인플루언서_매칭결과_{current_time}.xlsx"
+    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+    excel_filename = f"{brand_name}_인플루언서_매칭결과_{current_time}.xlsx"
+    
+    # 저장 디렉토리 설정
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    save_dir = os.path.join(current_dir, "matchingRaw")
+    # 디렉토리가 없으면 생성
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
     save_path = os.path.join(save_dir, excel_filename)
     
     # 엑셀 파일로 저장
@@ -613,11 +518,10 @@ try:
     print(f"전체 구간 평균 조회수: {avg_views:,.0f}")
     print(f"주요 카테고리: {main_category} (평균 비율: {main_category_avg:.1f}%)")
     print("\n[점수 계산 가중치]")
-    print("- 카테고리 점수: 17.5%")
-    print("- 조회수 점수: 17.5%")
-    print("- 태그 유사도 점수: 35%")
-    print("- 선호 브랜드 점수: 30%")
-    print(f"\n{brand_info['name']} 인플루언서 상위 20개 태그:")
+    print("- 카테고리 점수: 30%")
+    print("- 조회수 점수: 30%")
+    print("- 태그 유사도 점수: 40%")
+    print(f"\n{brand_name} 인플루언서 상위 20개 태그:")
     for tag, count in top_tags:
         print(f"- {tag}: {count}회 사용")
     print(f"\n상위 60명의 인플루언서 매칭 결과는 엑셀 파일에서 확인하실 수 있습니다.")

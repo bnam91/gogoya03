@@ -2,6 +2,7 @@ import { BrandRecordsManager } from './brandRecords.js';
 import { DmRecordsManager } from './dmRecords.js';
 import { DmModal } from './dmModal.js';
 import { SellerMatchFilter } from './sellerMatchFilter.js';
+import { BrandHistoryFilter } from './brandHistoryFilter.js';
 
 export class SellerMatchManager {
     constructor() {
@@ -23,6 +24,7 @@ export class SellerMatchManager {
             direction: 'asc'
         };
         this.contactSortTarget = null; // 컨택 정렬 타겟
+        this.brandHistoryFilter = new BrandHistoryFilter();
     }
 
     init = async () => {
@@ -586,6 +588,12 @@ export class SellerMatchManager {
                     </div>
                 </div>
             `;
+
+            // 브랜드 히스토리 필터 초기화
+            const rightPanelTop = this.rightContent.querySelector('.right-panel-top');
+            if (rightPanelTop) {
+                this.brandHistoryFilter.setContainer(rightPanelTop);
+            }
         }
     }
 
@@ -813,12 +821,14 @@ export class SellerMatchManager {
 
                 const cleanName = row.dataset.cleanName;
                 const influencerId = row.dataset.influencerId;
-                const username = influencerId.split('_')[0] + '_' + influencerId.split('_')[1];
+                // username 파싱 로직 수정 - 마지막 언더스코어와 clean_name을 제외한 부분만 사용
+                const parts = influencerId.split('_');
+                const username = parts.slice(0, -1).join('_');
 
                 const records = await this.dmRecordsManager.getDmRecords(cleanName);
                 const rightPanelBottom = document.querySelector('.right-panel-bottom .right-panel-content');
                 const dmCount = document.querySelector('.dm-count');
-                const rightPanelTop = document.querySelector('.right-panel-top .right-panel-content');
+                const rightPanelTop = document.querySelector('.right-panel-top');
 
                 if (rightPanelBottom) {
                     rightPanelBottom.innerHTML = `
@@ -831,9 +841,28 @@ export class SellerMatchManager {
 
                 if (rightPanelTop) {
                     const brandRecords = await this.brandRecordsManager.getBrandRecords(username);
+                    // 기존 필터 제거
+                    const existingFilter = rightPanelTop.querySelector('.brand-history-filter');
+                    if (existingFilter) {
+                        existingFilter.remove();
+                    }
+                    
+                    // 기존 콘텐츠 제거
+                    const existingContent = rightPanelTop.querySelector('.right-panel-content');
+                    if (existingContent) {
+                        existingContent.remove();
+                    }
+
+                    // 새로운 콘텐츠 추가
                     rightPanelTop.innerHTML = `
-                        ${this.brandRecordsManager.renderBrandRecords(brandRecords)}
+                        <h3>브랜드 히스토리</h3>
+                        <div class="right-panel-content">
+                            ${this.brandRecordsManager.renderBrandRecords(brandRecords)}
+                        </div>
                     `;
+                    
+                    // 브랜드 히스토리 필터 재초기화
+                    this.brandHistoryFilter.setContainer(rightPanelTop);
                 }
             });
         });
@@ -852,11 +881,27 @@ export class SellerMatchManager {
             checkbox.closest('tr').classList.remove('selected-row');
         }
 
-        // 중앙 패널 업데이트
-        const checkedInfluencers = this.influencers.filter(influencer =>
-            this.selectedInfluencerIds.has(`${influencer.username}_${influencer.clean_name}`)
-        );
-        this.updateCenterPanel(checkedInfluencers);
+        // 중앙 패널에서 해당 행만 제거
+        const centerPanel = this.centerContent;
+        if (centerPanel) {
+            const rowToRemove = centerPanel.querySelector(`tr[data-influencer-id="${influencerId}"]`);
+            if (rowToRemove) {
+                rowToRemove.remove();
+                
+                // 선택된 인플루언서 수 업데이트
+                const countBadge = centerPanel.querySelector('.count-badge');
+                if (countBadge) {
+                    const currentCount = parseInt(countBadge.textContent);
+                    countBadge.textContent = currentCount - 1;
+                }
+
+                // 선택된 인플루언서가 없으면 placeholder 표시
+                const tbody = centerPanel.querySelector('tbody');
+                if (tbody && tbody.children.length === 0) {
+                    centerPanel.innerHTML = '<p class="center-panel-placeholder">좌측에서 인플루언서를 선택하면 여기에 표시됩니다.</p>';
+                }
+            }
+        }
     }
 
     // 전체 제외 함수 추가
