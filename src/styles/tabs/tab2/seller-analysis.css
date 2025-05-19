@@ -106,6 +106,7 @@
     background-color: #f8f9fa;
     font-weight: 500;
     color: #333;
+    text-align: center !important;
 }
 
 .influencer-table td:nth-child(1),
@@ -280,6 +281,7 @@
     background-color: #f8f9fa;
     font-weight: 500;
     color: #333;
+    text-align: center !important;
 }
 
 .influencer-table tr:hover {
@@ -314,6 +316,7 @@
 
 .category-bar-container {
     width: 100%;
+    min-width: 280px;
     height: 20px;
     background-color: #f0f0f0;
     border-radius: 4px;
@@ -476,7 +479,7 @@
 .influencer-table th:nth-child(5),
 .influencer-table th:nth-child(7),
 .influencer-table th:nth-child(8) {
-    text-align: right;
+    text-align: center !important;
 }
 
 .influencer-table th:nth-child(7) {
@@ -716,4 +719,274 @@
     font-size: 14px;
     min-height: 60px;
     resize: vertical;
+}
+
+/* 이름 수정 입력 필드 스타일 */
+.name-edit-input {
+    width: 100%;
+    padding: 4px 8px;
+    border: 2px solid #1976d2;
+    border-radius: 4px;
+    font-size: 14px;
+    outline: none;
+    background-color: #fff;
+}
+
+.editable-name {
+    cursor: pointer;
+    position: relative;
+}
+
+.editable-name:hover::after {
+    content: '더블클릭하여 수정';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.editable-name:hover::after {
+    opacity: 1;
+}
+
+/* 루키 토글 버튼 스타일 */
+.rookie-toggle-btn {
+    padding: 6px 12px;
+    background-color: #f8f9fa;
+    color: #333;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.rookie-toggle-btn:hover {
+    background-color: #e9ecef;
+    border-color: #ced4da;
+}
+
+.rookie-toggle-btn.is-rookie {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    border-color: #90caf9;
+    font-weight: 500;
+}
+
+.rookie-toggle-btn.is-rookie:hover {
+    background-color: #bbdefb;
+    border-color: #64b5f6;
+}
+
+/* 메모 버튼 스타일 */
+.memo-btn {
+    padding: 6px 12px;
+    background-color: #f8f9fa;
+    color: #333;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.memo-btn:hover {
+    background-color: #e9ecef;
+    border-color: #ced4da;
+}
+
+.memo-btn.has-memo {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    border-color: #a5d6a7;
+    font-weight: 500;
+}
+
+.memo-btn.has-memo:hover {
+    background-color: #c8e6c9;
+    border-color: #81c784;
+}
+
+/* 메모 모달 스타일 */
+.memo-modal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    padding: 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    width: 400px;
+    max-width: 90vw;
+}
+
+.memo-modal-header {
+    background-color: #f8f9fa;
+    padding: 12px 16px;
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 8px 8px 0 0;
+    cursor: move;
+    user-select: none;
+}
+
+.memo-modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #333;
+}
+
+.current-username {
+    font-weight: 500;
+    color: #1976d2;
+}
+
+.memo-modal-content {
+    padding: 16px;
+}
+
+.memo-input {
+    width: 100%;
+    min-height: 250px;
+    padding: 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    resize: vertical;
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 16px;
+}
+
+.memo-input:focus {
+    outline: none;
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.memo-modal-footer {
+    padding: 12px 16px;
+    border-top: 1px solid #dee2e6;
+    text-align: right;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.memo-modal-footer button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.save-memo {
+    background-color: #1976d2;
+    color: white;
+}
+
+.save-memo:hover {
+    background-color: #1565c0;
+}
+
+.close-memo-modal {
+    background-color: #f8f9fa;
+    color: #333;
+    border: 1px solid #ddd !important;
+}
+
+.close-memo-modal:hover {
+    background-color: #e9ecef;
+}
+
+/* 모달 배경 오버레이 */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+}
+
+.influencer-table th:nth-child(4),
+.influencer-table td:nth-child(4) {
+    min-width: 150px;
+    width: 150px;
+}
+
+.influencer-table th:nth-child(5),
+.influencer-table td:nth-child(5) {
+    min-width: 300px;
+    width: 300px;
+}
+
+/* 이름 칼럼 너비 조정 */
+.influencer-table th:nth-child(4),
+.influencer-table td:nth-child(4) {
+    min-width: 120px;
+    width: 120px;
+}
+
+/* 카테고리 칼럼 너비 조정 */
+.influencer-table th:nth-child(5),
+.influencer-table td:nth-child(5) {
+    min-width: 300px;
+    width: 300px;
+}
+
+/* 분류 칼럼 너비 조정 */
+.influencer-table th:nth-child(2),
+.influencer-table td:nth-child(2) {
+    min-width: 100px;
+    width: 100px;
+}
+
+/* 유저명 칼럼 너비 조정 */
+.influencer-table th:nth-child(3),
+.influencer-table td:nth-child(3) {
+    min-width: 150px;
+    width: 150px;
+}
+
+/* 등급 칼럼 너비 조정 및 중앙 정렬 */
+.influencer-table th:nth-child(7),
+.influencer-table td:nth-child(7) {
+    min-width: 80px;
+    width: 80px;
+    text-align: center !important;
+}
+
+/* 순위 칼럼 너비 조정 */
+.influencer-table th:nth-child(1),
+.influencer-table td:nth-child(1) {
+    min-width: 50px;
+    width: 50px;
+}
+
+/* 유저명 링크 스타일 */
+.username-link {
+    color: #1976d2;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.username-link:hover {
+    color: #1565c0;
+    text-decoration: underline;
 }

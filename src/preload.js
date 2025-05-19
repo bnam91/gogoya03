@@ -31,7 +31,10 @@ contextBridge.exposeInMainWorld('api', {
   fetchBrandVerificationStatus: (allBrands) => ipcRenderer.invoke('fetch-brand-verification-status', allBrands),
   getDmRecords : (cleanName) => ipcRenderer.invoke('get-dm-records', cleanName),
   sendMailWithSMTP: (accountId, mailOptions) => ipcRenderer.invoke('send-mail-with-smtp', { accountId, mailOptions }),
-  readExcelFile: (filePath) => ipcRenderer.invoke('read-excel-file', filePath)
+  readExcelFile: (filePath) => ipcRenderer.invoke('read-excel-file', filePath),
+  updateInfluencerName: (username, newName) => ipcRenderer.invoke('update-influencer-name', { username, newName }),
+  updateInfluencerRookieStatus: (username, isRookie) => ipcRenderer.invoke('update-influencer-rookie-status', { username, isRookie }),
+  saveInfluencerMemo: (username, memo) => ipcRenderer.invoke('save-influencer-memo', username, memo)
 });
 
 contextBridge.exposeInMainWorld('googleSheetApi', {

@@ -8,6 +8,7 @@ export class SellerAnalysisFilter {
         this.customReelsViews = null;
         this.reelsViewsMin = null;
         this.reelsViewsMax = null;
+        this.rookieFilter = null;
         this.onFilterChange = null;
     }
 
@@ -24,10 +25,11 @@ export class SellerAnalysisFilter {
         this.customReelsViews = this.container.querySelector('#custom-reels-views');
         this.reelsViewsMin = this.container.querySelector('#reels-views-min');
         this.reelsViewsMax = this.container.querySelector('#reels-views-max');
+        this.rookieFilter = this.container.querySelector('#rookie-filter');
         this.resetButton = this.container.querySelector('#reset-filters');
 
         if (!this.categoryFilter || !this.percentageInput || !this.searchInput || !this.reelsViewsFilter || 
-            !this.customReelsViews || !this.reelsViewsMin || !this.reelsViewsMax || !this.resetButton) {
+            !this.customReelsViews || !this.reelsViewsMin || !this.reelsViewsMax || !this.resetButton || !this.rookieFilter) {
             console.error('필터 요소를 찾을 수 없습니다.');
             return;
         }
@@ -38,6 +40,7 @@ export class SellerAnalysisFilter {
         this.reelsViewsFilter.addEventListener('change', () => this.handleReelsViewsFilterChange());
         this.reelsViewsMin.addEventListener('input', () => this.handleFilterChange());
         this.reelsViewsMax.addEventListener('input', () => this.handleFilterChange());
+        this.rookieFilter.addEventListener('change', () => this.handleFilterChange());
         this.resetButton.addEventListener('click', () => this.resetFilters());
     }
 
@@ -49,6 +52,7 @@ export class SellerAnalysisFilter {
         this.reelsViewsFilter.value = '';
         this.reelsViewsMin.value = '';
         this.reelsViewsMax.value = '';
+        this.rookieFilter.value = '';
         this.customReelsViews.style.display = 'none';
 
         // 필터 변경 이벤트 발생
@@ -75,7 +79,7 @@ export class SellerAnalysisFilter {
     }
 
     filterInfluencers(influencers) {
-        if (!this.categoryFilter || !this.percentageInput || !this.searchInput || !this.reelsViewsFilter) {
+        if (!this.categoryFilter || !this.percentageInput || !this.searchInput || !this.reelsViewsFilter || !this.rookieFilter) {
             console.error('필터 요소가 초기화되지 않았습니다.');
             return influencers;
         }
@@ -84,6 +88,7 @@ export class SellerAnalysisFilter {
         const percentage = parseInt(this.percentageInput.value) || 0;
         const searchText = this.searchInput.value.toLowerCase();
         const reelsViewsRange = this.reelsViewsFilter.value;
+        const rookieStatus = this.rookieFilter.value;
 
         return influencers.filter(influencer => {
             // 카테고리 필터링
@@ -131,6 +136,11 @@ export class SellerAnalysisFilter {
                         if (views < min || views >= max) return false;
                     }
                 }
+            }
+
+            // 루키 필터링
+            if (rookieStatus) {
+                if (influencer.size !== rookieStatus) return false;
             }
 
             return true;

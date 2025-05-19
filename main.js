@@ -254,7 +254,9 @@ ipcMain.handle('fetch-influencer-data-for-seller-analysis', async () => {
                     "profile_link": 1,
                     "followers_num": 1,
                     "reels_views_num": 1,
-                    "tags": 1
+                    "tags": 1,
+                    "size": 1,
+                    "memo": 1
                 }
             }
         ];
@@ -369,12 +371,26 @@ ipcMain.handle('upload-influencer-data', async (event, payload) => {
     }
 });
 
+// 인플루언서 정보 조회 IPC 핸들러
 ipcMain.handle('get-influencer-info', async (event, username) => {
-    const client = await getMongoClient();
-    const db = client.db(config.database.name);
-    const collection = db.collection(config.database.collections.influencerData);
-    const influencer = await collection.findOne({ username });
-    return influencer;
+    try {
+        const db = await getMongoClient();
+        const collection = db.db(config.database.name).collection(config.database.collections.influencerData);
+
+        const influencer = await collection.findOne(
+            { username: username },
+            { projection: { memo: 1, username: 1, clean_name: 1 } }
+        );
+
+        if (!influencer) {
+            throw new Error('인플루언서를 찾을 수 없습니다.');
+        }
+
+        return influencer;
+    } catch (error) {
+        console.error('인플루언서 정보 조회 중 오류 발생:', error);
+        throw error;
+    }
 });
 
 ipcMain.handle('save-file', async (event, { defaultPath, content }) => {
@@ -734,6 +750,74 @@ ipcMain.handle('start-google-auth', async () => {
     console.error('구글 인증 시작 실패:', error);
     throw error;
   }
+});
+
+// 인플루언서 이름 업데이트
+ipcMain.handle('update-influencer-name', async (event, { username, newName }) => {
+    try {
+        const client = await getMongoClient();
+        const db = client.db(config.database.name);
+        const collection = db.collection(config.database.collections.influencerData);
+
+        const result = await collection.updateOne(
+            { username },
+            { $set: { clean_name: newName } }
+        );
+
+        if (result.matchedCount === 0) {
+            throw new Error('인플루언서를 찾을 수 없습니다.');
+        }
+
+        return { success: true };
+    } catch (error) {
+        console.error('인플루언서 이름 업데이트 실패:', error);
+        throw error;
+    }
+});
+
+// 인플루언서 루키 상태 업데이트
+ipcMain.handle('update-influencer-rookie-status', async (event, { username, isRookie }) => {
+    try {
+        const client = await getMongoClient();
+        const db = client.db(config.database.name);
+        const collection = db.collection(config.database.collections.influencerData);
+
+        const result = await collection.updateOne(
+            { username },
+            { $set: { size: isRookie ? 'rookie' : 'yet' } }
+        );
+
+        if (result.matchedCount === 0) {
+            throw new Error('인플루언서를 찾을 수 없습니다.');
+        }
+
+        return { success: true };
+    } catch (error) {
+        console.error('인플루언서 루키 상태 업데이트 실패:', error);
+        throw error;
+    }
+});
+
+// 메모 저장 IPC 핸들러
+ipcMain.handle('save-influencer-memo', async (event, username, memo) => {
+    try {
+        const db = await getMongoClient();
+        const collection = db.db(config.database.name).collection(config.database.collections.influencerData);
+
+        const result = await collection.updateOne(
+            { username: username },
+            { $set: { memo: memo } }
+        );
+
+        if (result.matchedCount === 0) {
+            throw new Error('인플루언서를 찾을 수 없습니다.');
+        }
+
+        return { success: true };
+    } catch (error) {
+        console.error('메모 저장 중 오류 발생:', error);
+        throw error;
+    }
 });
 
 // ===========================================

@@ -142,6 +142,7 @@ export class SellerAnalysisManager {
                     <thead>
                         <tr>
                             <th>순위</th>
+                            <th>분류</th>
                             <th>유저명</th>
                             <th>이름</th>
                             <th>카테고리</th>
@@ -149,33 +150,36 @@ export class SellerAnalysisManager {
                             <th>등급</th>
                             <th>릴스뷰</th>
                             <th>조회수/팔로워</th>
-                            <th>프로필링크</th>
+                            <th>메모</th>
                             <th>태그입력</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${influencers.map((influencer, index) => {
-            const followers = influencer.followers_num || 0;
-            const reelsViews = influencer.reels_views_num || 0;
-            const viewsToFollowers = followers > 0 ? ((reelsViews / followers) * 100).toFixed(2) : '0.00';
-            const isHighViews = parseFloat(viewsToFollowers) > 100;
-            const hasTags = influencer.tags && influencer.tags.length > 0;
+                            const followers = influencer.followers_num || 0;
+                            const reelsViews = influencer.reels_views_num || 0;
+                            const viewsToFollowers = followers > 0 ? ((reelsViews / followers) * 100).toFixed(2) : '0.00';
+                            const isHighViews = parseFloat(viewsToFollowers) > 100;
+                            const hasTags = influencer.tags && influencer.tags.length > 0;
+                            const isRookie = influencer.size === 'rookie';
+                            const hasMemo = influencer.memo && influencer.memo.trim() !== '';
 
-            return `
+                            return `
                                 <tr>
                                     <td>${index + 1}</td>
-                                    <td>${influencer.username || '-'}</td>
-                                    <td>${influencer.clean_name || '-'}</td>
+                                    <td><button class="rookie-toggle-btn ${isRookie ? 'is-rookie' : ''}" data-username="${influencer.username}">${isRookie ? '루키' : '분류'}</button></td>
+                                    <td><a href="${influencer.profile_link}" target="_blank" class="username-link">${influencer.username || '-'}</a></td>
+                                    <td class="editable-name" data-username="${influencer.username}">${influencer.clean_name || '-'}</td>
                                     <td>${this.createCategoryBar(influencer.category).outerHTML}</td>
                                     <td><span class="followers-box">${followers.toLocaleString()}</span></td>
                                     <td>${influencer.grade || '-'}</td>
                                     <td><span class="views-box">${reelsViews.toLocaleString()}</span></td>
                                     <td><span class="views-to-followers-box ${isHighViews ? 'high-views' : ''}">${viewsToFollowers}%</span></td>
-                                    <td><a href="${influencer.profile_link}" target="_blank" class="profile-button">프로필 보기</a></td>
+                                    <td><button class="memo-btn ${hasMemo ? 'has-memo' : ''}" data-username="${influencer.username}" title="${hasMemo ? influencer.memo : ''}">메모</button></td>
                                     <td><button class="tag-input-btn ${hasTags ? 'has-tags' : ''}" data-username="${influencer.username}">태그입력</button></td>
                                 </tr>
                             `;
-        }).join('')}
+                        }).join('')}
                     </tbody>
                 </table>
             </div>
@@ -275,9 +279,106 @@ export class SellerAnalysisManager {
                 }
             }
 
+            // 이름 수정 기능 설정
+            this.setupNameEditing();
+            // 루키 토글 기능 설정
+            this.setupRookieToggle();
             // 태그 입력 관련 이벤트 리스너 설정
             this.setupTagInputHandlers();
+            // 메모 관련 이벤트 리스너 설정
+            this.setupMemoHandlers();
         }
+    }
+
+    setupNameEditing = () => {
+        const editableNames = document.querySelectorAll('.editable-name');
+        
+        editableNames.forEach(cell => {
+            cell.addEventListener('dblclick', async () => {
+                const username = cell.dataset.username;
+                const currentName = cell.textContent;
+                
+                // 입력 필드 생성
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = currentName;
+                input.className = 'name-edit-input';
+                
+                // 기존 내용을 입력 필드로 교체
+                cell.textContent = '';
+                cell.appendChild(input);
+                input.focus();
+                
+                // 입력 필드 선택
+                input.select();
+                
+                // 엔터키나 포커스 아웃 시 저장
+                const saveName = async () => {
+                    const newName = input.value.trim();
+                    if (newName !== currentName) {
+                        try {
+                            // DB 업데이트
+                            await window.api.updateInfluencerName(username, newName);
+                            
+                            // 성공 시 UI 업데이트
+                            cell.textContent = newName;
+                            
+                            // 인플루언서 데이터 업데이트
+                            const influencer = this.influencers.find(i => i.username === username);
+                            if (influencer) {
+                                influencer.clean_name = newName;
+                            }
+                        } catch (error) {
+                            console.error('이름 업데이트 실패:', error);
+                            alert('이름 업데이트에 실패했습니다.');
+                            cell.textContent = currentName;
+                        }
+                    } else {
+                        cell.textContent = currentName;
+                    }
+                };
+                
+                input.addEventListener('blur', saveName);
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        input.blur();
+                    } else if (e.key === 'Escape') {
+                        cell.textContent = currentName;
+                    }
+                });
+            });
+        });
+    }
+
+    setupRookieToggle = () => {
+        const rookieButtons = document.querySelectorAll('.rookie-toggle-btn');
+        
+        rookieButtons.forEach(button => {
+            button.addEventListener('click', async () => {
+                const username = button.dataset.username;
+                const isCurrentlyRookie = button.classList.contains('is-rookie');
+                const newRookieStatus = !isCurrentlyRookie;
+                
+                try {
+                    // DB 업데이트
+                    await window.api.updateInfluencerRookieStatus(username, newRookieStatus);
+                    
+                    // UI 업데이트
+                    button.classList.toggle('is-rookie');
+                    button.textContent = newRookieStatus ? '루키' : '분류';
+                    
+                    // 인플루언서 데이터 업데이트
+                    const influencer = this.influencers.find(i => i.username === username);
+                    if (influencer) {
+                        influencer.size = newRookieStatus ? 'rookie' : 'yet';
+                    }
+                } catch (error) {
+                    console.error('루키 상태 업데이트 실패:', error);
+                    alert('루키 상태 업데이트에 실패했습니다.');
+                }
+            });
+        });
     }
 
     setupTagInputHandlers = () => {
@@ -536,6 +637,135 @@ export class SellerAnalysisManager {
                     tagBox.remove();
                 });
             });
+        });
+    }
+
+    setupMemoHandlers = () => {
+        const modal = document.getElementById('memoModal');
+        const modalHeader = modal.querySelector('.memo-modal-header');
+        const memoInput = modal.querySelector('.memo-input');
+        const saveBtn = modal.querySelector('.save-memo');
+        const closeBtn = modal.querySelector('.close-memo-modal');
+        let currentUsername = '';
+        let isDragging = false;
+        let currentX;
+        let currentY;
+        let initialX;
+        let initialY;
+        let xOffset = 0;
+        let yOffset = 0;
+
+        // 드래그 기능
+        modalHeader.addEventListener('mousedown', dragStart);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', dragEnd);
+
+        function dragStart(e) {
+            initialX = e.clientX - xOffset;
+            initialY = e.clientY - yOffset;
+
+            if (e.target === modalHeader) {
+                isDragging = true;
+            }
+        }
+
+        function drag(e) {
+            if (isDragging) {
+                e.preventDefault();
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+
+                xOffset = currentX;
+                yOffset = currentY;
+
+                setTranslate(currentX, currentY, modal);
+            }
+        }
+
+        function dragEnd(e) {
+            initialX = currentX;
+            initialY = currentY;
+            isDragging = false;
+        }
+
+        function setTranslate(xPos, yPos, el) {
+            el.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`;
+        }
+
+        // 모달 초기 위치 설정
+        function resetModalPosition() {
+            modal.style.transform = 'translate(-50%, -50%)';
+            xOffset = 0;
+            yOffset = 0;
+        }
+
+        // ESC 키 이벤트 리스너
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.style.display === 'block') {
+                closeBtn.click();
+            }
+        });
+
+        // 메모 버튼 클릭 이벤트
+        document.querySelectorAll('.memo-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                currentUsername = btn.dataset.username;
+                modal.style.display = 'block';
+                memoInput.focus();
+
+                // 현재 선택된 유저명 표시
+                modal.querySelector('.current-username').textContent = currentUsername;
+
+                // 기존 메모 로드
+                try {
+                    const influencer = await window.api.getInfluencerInfo(currentUsername);
+                    if (influencer && influencer.memo) {
+                        memoInput.value = influencer.memo;
+                    } else {
+                        memoInput.value = '';
+                    }
+                } catch (error) {
+                    console.error('메모 로드 중 오류 발생:', error);
+                    memoInput.value = '';
+                }
+            });
+        });
+
+        // 모달 닫기
+        closeBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+            memoInput.value = '';
+            modal.querySelector('.current-username').textContent = '';
+            resetModalPosition();
+        });
+
+        // 저장 버튼 클릭
+        saveBtn.addEventListener('click', async () => {
+            const memo = memoInput.value.trim();
+
+            try {
+                await window.api.saveInfluencerMemo(currentUsername, memo);
+
+                // 메모 버튼 스타일 업데이트
+                const memoBtn = document.querySelector(`.memo-btn[data-username="${currentUsername}"]`);
+                if (memo) {
+                    memoBtn.classList.add('has-memo');
+                } else {
+                    memoBtn.classList.remove('has-memo');
+                }
+
+                // 인플루언서 데이터 업데이트
+                const influencer = this.influencers.find(i => i.username === currentUsername);
+                if (influencer) {
+                    influencer.memo = memo;
+                }
+
+                alert('메모가 저장되었습니다.');
+                closeBtn.click();
+            } catch (error) {
+                console.error('메모 저장 중 오류 발생:', error);
+                alert('메모 저장 중 오류가 발생했습니다.');
+            }
         });
     }
 

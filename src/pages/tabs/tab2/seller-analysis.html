@@ -33,9 +33,6 @@
                 <select id="reels-views-filter">
                     <option value="">전체</option>
                     <option value="0-10000">1만 미만</option>
-                    <!-- <option value="10000-50000">1만~5만</option>
-                    <option value="50000-100000">5만~10만</option>
-                    <option value="100000-500000">10만~50만</option> -->
                     <option value="10000-20000">1만~2만</option>
                     <option value="20000-150000">2만~15만</option>
                     <option value="150000-500000">15만~50만</option>
@@ -48,6 +45,13 @@
                     <span>~</span>
                     <input type="number" id="reels-views-max" placeholder="최대값" style="width: 100px;">
                 </div>
+            </div>
+            <div class="filter-group">
+                <label for="rookie-filter">분류:</label>
+                <select id="rookie-filter">
+                    <option value="">전체</option>
+                    <option value="rookie">루키</option>
+                </select>
             </div>
             <div class="filter-group">
                 <label for="name-search">이름 검색:</label>
@@ -65,7 +69,21 @@
         <div class="influencer-table-container">
             <!-- 인플루언서 테이블이 여기에 동적으로 추가됩니다 -->
         </div>
-    </div> 
+    </div>
+
+    <!-- 메모 모달 -->
+    <div class="memo-modal" id="memoModal">
+        <div class="memo-modal-header">
+            <h3>메모 입력 - <span class="current-username"></span></h3>
+        </div>
+        <div class="memo-modal-content">
+            <textarea class="memo-input" placeholder="메모를 입력하세요"></textarea>
+            <div class="modal-buttons">
+                <button class="save-memo">저장</button>
+                <button class="close-memo-modal">닫기</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 
