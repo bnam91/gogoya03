@@ -21,6 +21,7 @@ export const menuData = [
         { title: "제안서 관리", page: "tab2/proposal-manage" },
         { title: "공급가 관리", page: "tab2/supply-prices-manage" },
         { title: "셀러매칭", page: "tab2/seller-match" },
+        { title: "브랜드 매칭", page: "tab2/brand-match" },
         { title: "캠페인 관리", page: "tab2/campaign-manage" },
         { title: "셀러분석", page: "tab2/seller-analysis" }
       ]
