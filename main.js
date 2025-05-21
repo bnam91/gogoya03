@@ -202,7 +202,8 @@ ipcMain.handle('fetch-influencer-data-for-seller-match', async () => {
                     "image_url": 1,
                     "reels_views": "$reels_views(15)",
                     "reels_views_num": 1,
-                    "contact_method": 1
+                    "contact_method": 1,
+                    "brand": 1
                 }
             }
         ];
