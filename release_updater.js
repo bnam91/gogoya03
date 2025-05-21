@@ -2,6 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import { exec } from 'child_process';
 import axios from 'axios';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 class ReleaseUpdater {
     constructor(owner, repo, versionFile = "VERSION.txt") {
@@ -9,11 +12,17 @@ class ReleaseUpdater {
         this.repo = repo;
         this.versionFile = versionFile;
         this.apiUrl = `https://api.github.com/repos/${owner}/${repo}/releases/latest`;
+        this.token = process.env.GITHUB_TOKEN;
     }
 
     async getLatestRelease() {
         try {
-            const response = await axios.get(this.apiUrl);
+            const headers = {
+                'Authorization': `token ${this.token}`,
+                'Accept': 'application/vnd.github.v3+json'
+            };
+            
+            const response = await axios.get(this.apiUrl, { headers });
             const releaseData = response.data;
             return {
                 tag_name: releaseData.tag_name,
@@ -24,6 +33,13 @@ class ReleaseUpdater {
             };
         } catch (error) {
             console.error('GitHub API 요청 중 오류 발생:', error.message);
+            if (error.response) {
+                console.error('상세 에러 정보:', {
+                    status: error.response.status,
+                    statusText: error.response.statusText,
+                    data: error.response.data
+                });
+            }
             return null;
         }
     }

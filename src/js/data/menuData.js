@@ -33,6 +33,14 @@ export const menuData = [
       ]
     },
     {
+      title: "마케팅대행",
+      tabClass: "tab5",
+      children: [
+        { title: "소셜체험단", page: "tab5/social-experience" },
+        { title: "상위노출체험단", page: "tab5/top-exposure" }
+      ]
+    },
+    {
       title: "관리자",
       tabClass: "tab3",
       children: [
