@@ -70,6 +70,151 @@
     height: 100%;
 }
 
+/* 패널 헤더 스타일 */
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.panel-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #333;
+}
+
+/* 검색 컨테이너 스타일 */
+.search-container {
+    padding: 1rem;
+}
+
+.input-group {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.form-input {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+/* 리스트 컨테이너 스타일 */
+.list-container {
+    padding: 1rem;
+}
+
+/* 인플루언서 상세 정보 스타일 */
+.influencer-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.detail-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+}
+
+.profile-image {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.profile-image img {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.profile-image .no-image {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background-color: #E5E7EB;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    font-size: 14px;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.detail-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eee;
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    min-width: 100px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.detail-value {
+    flex: 1;
+    color: #212529;
+    word-break: break-all;
+    line-height: 1.4;
+}
+
+.detail-link {
+    color: #007bff;
+    text-decoration: none;
+    word-break: break-all;
+}
+
+.detail-link:hover {
+    text-decoration: underline;
+}
+
+.list-header {
+    font-weight: bold;
+    background-color: #f5f5f5;
+    padding: 0.75rem 1rem;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+
+/* 버튼 스타일 */
+#search-influencer-btn {
+    padding: 0.5rem 1rem;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#search-influencer-btn:hover {
+    background-color: #0056b3;
+}
+
 /* 스크롤바 스타일 */
 ::-webkit-scrollbar {
     width: 8px;

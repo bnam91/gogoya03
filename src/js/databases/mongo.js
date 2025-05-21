@@ -316,4 +316,22 @@ export async function updateNextStep(brandName, newStatus) {
             { $set: { nextstep: newStatus } }
         );
     });
+}
+
+export async function getInfluencerList() {
+    return withRetry(async () => {
+        const client = await getMongoClient();
+        const db = client.db(config.database.name);
+        const collection = db.collection(config.database.collections.influencerData);
+        
+        const data = await collection.find({}, {
+            projection: {
+                username: 1,
+                clean_name: 1,
+                _id: 0
+            }
+        }).limit(1).toArray();
+        
+        return data;
+    });
 }  
