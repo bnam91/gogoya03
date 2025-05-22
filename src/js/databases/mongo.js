@@ -316,7 +316,7 @@ export async function updateNextStep(brandName, newStatus) {
             { $set: { nextstep: newStatus } }
         );
     });
-}
+}  
 
 export async function getInfluencerList() {
     return withRetry(async () => {

@@ -26,6 +26,17 @@ export function initPage() {
                         placeholder="인플루언서 사용자명 또는 정제명 입력"
                         style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;"
                     >
+                    <input 
+                        type="number" 
+                        id="days-input" 
+                        class="form-input" 
+                        placeholder="일자"
+                        min="1"
+                        max="365"
+                        value="14"
+                        style="width: 80px; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; text-align: center;"
+                    >
+                    <span style="display: flex; align-items: center; color: #666; font-size: 0.875rem;">일 이내</span>
                     <button id="search-influencer-btn" class="btn btn-primary">조회</button>
                     <button id="reset-influencer-btn" 
                             class="btn" 
@@ -49,16 +60,14 @@ export function initPage() {
                     </button>
                 </div>
             </div>
-            <div id="influencer-list" class="list-container" style="margin-top: 0rem;">
-                <div class="list-item influencer-detail">
-                    <div class="list-header">
+            <div class="list-containers" style="display: flex; flex-direction: column; gap: 1rem; padding: 0 1rem;">
+                <div id="influencer-list" class="list-container" style="background-color: #fff; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden;">
+                    <div class="list-header" style="padding: 0.75rem; background-color: #f3f4f6; border-bottom: 1px solid #e5e7eb; font-weight: 500;">
                         <span>인플루언서 정보</span>
                     </div>
                 </div>
-            </div>
-            <div id="brand-list" class="list-container" style="margin-top: 1rem;">
-                <div class="list-item brand-detail">
-                    <div class="list-header">
+                <div id="brand-list" class="list-container" style="background-color: #fff; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden;">
+                    <div class="list-header" style="padding: 0.75rem; background-color: #f3f4f6; border-bottom: 1px solid #e5e7eb; font-weight: 500;">
                         <span>브랜드 정보</span>
                     </div>
                 </div>
@@ -69,16 +78,23 @@ export function initPage() {
         const searchBtn = leftContent.querySelector('#search-influencer-btn');
         const resetBtn = leftContent.querySelector('#reset-influencer-btn');
         const usernameInput = leftContent.querySelector('#username-input');
+        const daysInput = leftContent.querySelector('#days-input');
 
         // 초기화 버튼 이벤트 리스너
         resetBtn.addEventListener('click', () => {
             // 입력 필드 초기화
             usernameInput.value = '';
+            daysInput.value = '14'; // 기본값으로 14일 설정
             
-            // 리스트 컨테이너 초기화 (헤더 제외)
+            // 인플루언서 리스트 컨테이너 초기화 (헤더 제외)
             const listContainer = leftContent.querySelector('#influencer-list');
             const existingItems = listContainer.querySelectorAll('.list-item:not(.list-header)');
             existingItems.forEach(item => item.remove());
+
+            // 브랜드 리스트 컨테이너 초기화 (헤더 제외)
+            const brandListContainer = leftContent.querySelector('#brand-list');
+            const existingBrandItems = brandListContainer.querySelectorAll('.list-item:not(.list-header)');
+            existingBrandItems.forEach(item => item.remove());
 
             // 초기화 토스트 메시지
             const toast = document.createElement('div');
@@ -96,6 +112,7 @@ export function initPage() {
 
         searchBtn.addEventListener('click', async () => {
             const username = usernameInput.value.trim();
+            const days = parseInt(daysInput.value) || 14; // 기본값 14일
             
             if (!username) {
                 // 입력값이 없는 경우 토스트 메시지
@@ -196,7 +213,7 @@ export function initPage() {
                                             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
                                             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
                                         </svg>
-                                        ${matchedData.out_link ? '외부 링크로 이동' : '-'}
+                                        ${matchedData.out_link ? '외부링크' : '-'}
                                     </a>
                                 </div>
                             </div>
@@ -288,6 +305,35 @@ export function initPage() {
                             )) {
                                 return false;
                             }
+
+                            // 사용자가 입력한 일수 이내의 상품이 있는지 확인
+                            if (brand.products && Array.isArray(brand.products)) {
+                                const now = new Date();
+                                const daysAgo = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
+                                
+                                // 입력한 일수 이내의 상품이 하나라도 있는지 확인
+                                const hasRecentProducts = brand.products.some(product => {
+                                    if (product.mentioned_date) {
+                                        const mentionedDate = new Date(product.mentioned_date);
+                                        return mentionedDate >= daysAgo;
+                                    }
+                                    return false;
+                                });
+
+                                // 입력한 일수 이내의 상품이 없는 경우 제외
+                                if (!hasRecentProducts) {
+                                    return false;
+                                }
+
+                                // 입력한 일수 이내의 상품만 필터링
+                                brand.products = brand.products.filter(product => {
+                                    if (product.mentioned_date) {
+                                        const mentionedDate = new Date(product.mentioned_date);
+                                        return mentionedDate >= daysAgo;
+                                    }
+                                    return false;
+                                });
+                            }
                             
                             return true;
                         });
@@ -298,13 +344,39 @@ export function initPage() {
                             brandListItem.className = 'list-item brand-detail';
                             brandListItem.innerHTML = `
                                 <div class="detail-section" style="padding: 1rem;">
-                                    ${filteredBrands.map(brand => `
-                                        <div style="margin-bottom: 1rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden;">
-                                            <div style="padding: 0.75rem; background-color: #f3f4f6; border-bottom: 1px solid #e5e7eb; font-weight: 500;">
-                                                ${brand.name || '-'}
+                                    <div style="margin-bottom: 1rem; padding: 0.5rem; background-color: #f8f9fa; border-radius: 0.5rem; font-size: 0.875rem; color: #666;">
+                                        최근 ${days}일 이내의 언급 데이터만 표시됩니다.
+                                    </div>
+                                    ${filteredBrands.map((brand, index) => `
+                                        <div class="brand-item" style="margin-bottom: 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden;">
+                                            <div class="brand-header" 
+                                                 style="padding: 0.75rem; 
+                                                        background-color: #f3f4f6; 
+                                                        border-bottom: 1px solid #e5e7eb; 
+                                                        font-weight: 500;
+                                                        cursor: pointer;
+                                                        display: flex;
+                                                        justify-content: space-between;
+                                                        align-items: center;">
+                                                <span>${brand.name || '-'}</span>
+                                                <svg class="toggle-icon" 
+                                                     width="16" 
+                                                     height="16" 
+                                                     viewBox="0 0 24 24" 
+                                                     fill="none" 
+                                                     stroke="currentColor" 
+                                                     stroke-width="2" 
+                                                     stroke-linecap="round" 
+                                                     stroke-linejoin="round"
+                                                     style="transition: transform 0.2s ease;">
+                                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                                </svg>
                                             </div>
-                                            ${brand.products && Array.isArray(brand.products) && brand.products.length > 0 ? `
-                                                <div style="padding: 0.75rem;">
+                                            <div class="brand-content hidden" 
+                                                 style="display: none; 
+                                                        padding: 0.75rem; 
+                                                        background-color: #fff;">
+                                                ${brand.products && Array.isArray(brand.products) && brand.products.length > 0 ? `
                                                     ${brand.products.map(product => `
                                                         <div style="margin-bottom: 0.5rem; padding: 0.5rem; background-color: #f9fafb; border-radius: 0.375rem;">
                                                             <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
@@ -334,17 +406,36 @@ export function initPage() {
                                                             ` : ''}
                                                         </div>
                                                     `).join('')}
-                                                </div>
-                                            ` : `
-                                                <div style="padding: 0.75rem; color: #6b7280; font-size: 0.875rem;">
-                                                    등록된 상품이 없습니다.
-                                                </div>
-                                            `}
+                                                ` : `
+                                                    <div style="padding: 0.75rem; color: #6b7280; font-size: 0.875rem;">
+                                                        등록된 상품이 없습니다.
+                                                    </div>
+                                                `}
+                                            </div>
                                         </div>
                                     `).join('')}
                                 </div>
                             `;
                             brandListContainer.appendChild(brandListItem);
+
+                            // 브랜드 헤더 클릭 이벤트 리스너 추가
+                            const brandHeaders = brandListItem.querySelectorAll('.brand-header');
+                            brandHeaders.forEach(header => {
+                                header.addEventListener('click', () => {
+                                    const content = header.parentElement.querySelector('.brand-content');
+                                    const icon = header.querySelector('.toggle-icon');
+                                    
+                                    if (content.classList.contains('hidden')) {
+                                        content.classList.remove('hidden');
+                                        content.style.display = 'block';
+                                        icon.style.transform = 'rotate(180deg)';
+                                    } else {
+                                        content.classList.add('hidden');
+                                        content.style.display = 'none';
+                                        icon.style.transform = 'rotate(0deg)';
+                                    }
+                                });
+                            });
                         } else {
                             // 필터링된 브랜드가 없는 경우 메시지 표시
                             const brandListItem = document.createElement('div');
