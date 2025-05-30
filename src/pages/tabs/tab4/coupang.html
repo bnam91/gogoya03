@@ -8,8 +8,6 @@
 
     <!-- 메인 컨테이너 -->
     <div class="coupang-container">
-        <h2>쿠팡 관리</h2>
-        
         <!-- 검색 영역 -->
         <div class="search-container">
             <input type="text" id="coupang-search-input" class="search-input" placeholder="검색어를 입력하세요">
@@ -43,11 +41,34 @@
                 </div>
             </div>
 
+            <!-- 키워드 검색량 영역 -->
+            <div id="coupang-keyword-stats" class="keyword-stats-container" style="display: none;">
+                <h3>키워드 검색량 분석</h3>
+                <div class="keyword-stats-table-container">
+                    <table class="keyword-stats-table">
+                        <thead>
+                            <tr>
+                                <th>키워드</th>
+                                <th>PC 검색량</th>
+                                <th>모바일 검색량</th>
+                                <th>총 검색량</th>
+                                <th>경쟁지수</th>
+                                <th>평균 입찰가</th>
+                            </tr>
+                        </thead>
+                        <tbody id="keyword-stats-body">
+                            <!-- 검색량 데이터가 여기에 표시됩니다 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <div id="coupang-search-results" class="search-results">
                 <!-- 검색 결과가 여기에 표시됩니다 -->
             </div>
             <div id="coupang-loading" class="loading-indicator" style="display: none;">
-                검색 중입니다...
+                <div class="spinner"></div>
+                <div class="loading-text">검색 중입니다...</div>
             </div>
         </div>
     </div>

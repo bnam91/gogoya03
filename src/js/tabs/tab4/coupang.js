@@ -29,17 +29,20 @@ function initEventListeners() {
             searchResults.innerHTML = '';
             filterContainer.style.display = 'none';
             document.getElementById('coupang-trend-charts').style.display = 'none';
+            document.getElementById('coupang-keyword-stats').style.display = 'none';
 
-            // 검색과 트렌드 데이터를 병렬로 가져오기
-            const [searchResult, trendResult] = await Promise.all([
+            // 검색, 트렌드, 키워드 통계를 병렬로 가져오기
+            const [searchResult, trendResult, keywordStats] = await Promise.all([
                 window.coupangAPI.search(searchQuery),
-                window.coupangAPI.getTrend(searchQuery)
+                window.coupangAPI.getTrend(searchQuery),
+                window.coupangAPI.getKeywordStats(searchQuery)
             ]);
 
             currentProducts = searchResult.products;
             displaySearchResults(searchResult);
             filterContainer.style.display = 'block';
             await displayTrendCharts(searchQuery);
+            displayKeywordStats(keywordStats, searchQuery);
 
         } catch (error) {
             console.error('검색 중 오류 발생:', error);
@@ -335,4 +338,54 @@ async function displayTrendCharts(keyword) {
         console.error('트렌드 차트 표시 중 오류:', error);
         document.getElementById('coupang-trend-charts').style.display = 'none';
     }
+}
+
+function displayKeywordStats(data, searchKeyword) {
+    const container = document.getElementById('coupang-keyword-stats');
+    const tbody = document.getElementById('keyword-stats-body');
+    
+    container.style.display = 'block';
+    
+    // 검색 키워드 데이터 찾기
+    const searchKeywordData = data.find(item => item.keyword === searchKeyword);
+    
+    // 검색 키워드를 제외한 나머지 데이터
+    const otherKeywords = data.filter(item => item.keyword !== searchKeyword);
+    
+    // 나머지 키워드를 총 검색량 기준으로 내림차순 정렬
+    const sortedOtherKeywords = [...otherKeywords].sort((a, b) => b.totalCount - a.totalCount);
+    
+    // 테이블 내용 생성
+    let rows = '';
+    
+    // 검색 키워드가 있는 경우 상단에 표시
+    if (searchKeywordData) {
+        rows += `
+            <tr class="search-keyword-row">
+                <td><strong>${searchKeywordData.keyword}</strong> (검색어)</td>
+                <td>${searchKeywordData.pcCount.toLocaleString()}</td>
+                <td>${searchKeywordData.mobileCount.toLocaleString()}</td>
+                <td>${searchKeywordData.totalCount.toLocaleString()}</td>
+                <td>${searchKeywordData.competition || '-'}</td>
+                <td>${searchKeywordData.averageBid ? searchKeywordData.averageBid.toLocaleString() + '원' : '-'}</td>
+            </tr>
+            <tr class="separator-row">
+                <td colspan="6"><hr></td>
+            </tr>
+        `;
+    }
+    
+    // 나머지 키워드 표시
+    rows += sortedOtherKeywords.map(item => `
+        <tr>
+            <td>${item.keyword}</td>
+            <td>${item.pcCount.toLocaleString()}</td>
+            <td>${item.mobileCount.toLocaleString()}</td>
+            <td>${item.totalCount.toLocaleString()}</td>
+            <td>${item.competition || '-'}</td>
+            <td>${item.averageBid ? item.averageBid.toLocaleString() + '원' : '-'}</td>
+        </tr>
+    `).join('');
+    
+    tbody.innerHTML = rows;
 } 

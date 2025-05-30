@@ -26,6 +26,7 @@ import xlsx from 'xlsx';
 import puppeteer from 'puppeteer';
 import axios from 'axios';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import crypto from 'crypto';
 let authInstance; // 전역에 저장
 // 인코딩 설정
 process.env.CHARSET = 'UTF-8';
@@ -1077,6 +1078,66 @@ ipcMain.handle('get-naver-trend', async (event, keyword) => {
         };
     } catch (error) {
         console.error('네이버 트렌드 API 호출 중 오류:', error);
+        throw error;
+    }
+});
+
+// 네이버 검색광고 API 핸들러
+ipcMain.handle('get-naver-keyword-stats', async (event, keyword) => {
+    try {
+        const timestamp = Date.now().toString();
+        const method = 'GET';
+        const uri = '/keywordstool';
+        
+        const customerId = '2708075';
+        const apiKey = '0100000000b62d7b33e8c8802cd536da976902c824be8a5a34b0fe73865d4360a5f4c05391';
+        const secretKey = 'AQAAAAC2LXsz6MiALNU22pdpAsgkYdmcZdfmvPB+rRfuez8Gdw==';
+        const baseUrl = 'https://api.searchad.naver.com';
+
+        // 시그니처 생성
+        const message = timestamp + '.' + method + '.' + uri;
+        const signature = crypto.createHmac('sha256', Buffer.from(secretKey, 'utf-8'))
+            .update(message)
+            .digest('base64');
+        
+        const headers = {
+            'X-Timestamp': timestamp,
+            'X-API-KEY': apiKey,
+            'X-Customer': customerId,
+            'X-Signature': signature,
+            'Content-Type': 'application/json'
+        };
+        
+        const params = {
+            hintKeywords: keyword,
+            showDetail: 1
+        };
+
+        const response = await axios.get(`${baseUrl}${uri}`, {
+            headers,
+            params
+        });
+
+        const data = response.data;
+        
+        if (!data.keywordList || data.keywordList.length === 0) {
+            throw new Error('키워드 데이터가 없습니다.');
+        }
+
+        // 데이터 가공
+        const processedData = data.keywordList.map(item => ({
+            keyword: item.relKeyword,
+            pcCount: item.monthlyPcQcCnt === "<10" ? 0 : Number(item.monthlyPcQcCnt),
+            mobileCount: item.monthlyMobileQcCnt === "<10" ? 0 : Number(item.monthlyMobileQcCnt),
+            totalCount: (item.monthlyPcQcCnt === "<10" ? 0 : Number(item.monthlyPcQcCnt)) +
+                       (item.monthlyMobileQcCnt === "<10" ? 0 : Number(item.monthlyMobileQcCnt)),
+            competition: item.competitionIndex,
+            averageBid: item.avgMonthlyBid
+        }));
+
+        return processedData;
+    } catch (error) {
+        console.error('네이버 검색광고 API 호출 중 오류:', error);
         throw error;
     }
 });

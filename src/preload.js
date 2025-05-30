@@ -53,5 +53,6 @@ contextBridge.exposeInMainWorld('gmailAuthAPI', {
 // 쿠팡 검색 API 추가
 contextBridge.exposeInMainWorld('coupangAPI', {
     search: (query) => ipcRenderer.invoke('search-coupang', query),
-    getTrend: (keyword) => ipcRenderer.invoke('get-naver-trend', keyword)
+    getTrend: (keyword) => ipcRenderer.invoke('get-naver-trend', keyword),
+    getKeywordStats: (keyword) => ipcRenderer.invoke('get-naver-keyword-stats', keyword)
 });
