@@ -23,6 +23,9 @@ import { getGmailAuthUrl } from './src/gmailAuth.js';
 import { smtpAuth } from './token/smtpAuth.js';
 import nodemailer from 'nodemailer';
 import xlsx from 'xlsx';
+import puppeteer from 'puppeteer';
+import axios from 'axios';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 let authInstance; // 전역에 저장
 // 인코딩 설정
 process.env.CHARSET = 'UTF-8';
@@ -827,6 +830,253 @@ ipcMain.handle('save-influencer-memo', async (event, username, memo) => {
         return { success: true };
     } catch (error) {
         console.error('메모 저장 중 오류 발생:', error);
+        throw error;
+    }
+});
+
+// 쿠팡 검색 IPC 핸들러
+ipcMain.handle('search-coupang', async (event, searchQuery) => {
+    try {
+        // IP 확인
+        const url = 'https://ip.decodo.com/json';
+        const proxyAgent = new HttpsProxyAgent(
+            'http://spa8tftx9o:n~b7dbA49W9wxfgUkC@dc.decodo.com:10000'
+        );
+
+        await axios.get(url, { httpsAgent: proxyAgent });
+
+        // 크롬 브라우저 실행
+        const browser = await puppeteer.launch({
+            headless: false,
+            executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--disable-gpu',
+                '--window-size=1920x1080',
+                '--start-maximized',
+                '--disable-blink-features=AutomationControlled',
+                '--disable-web-security',
+                '--disable-features=IsolateOrigins,site-per-process'
+            ],
+            ignoreDefaultArgs: ['--disable-extensions'],
+            defaultViewport: null
+        });
+
+        const pages = await browser.pages();
+        const page = pages[0];
+
+        // 자동화 감지 방지
+        await page.evaluateOnNewDocument(() => {
+            delete navigator.__proto__.webdriver;
+            window.chrome = {
+                runtime: {},
+                loadTimes: function() {},
+                csi: function() {},
+                app: {}
+            };
+            const originalQuery = window.navigator.permissions.query;
+            window.navigator.permissions.query = (parameters) => (
+                parameters.name === 'notifications' ?
+                    Promise.resolve({ state: Notification.permission }) :
+                    originalQuery(parameters)
+            );
+            Object.defineProperty(navigator, 'plugins', {
+                get: () => [1, 2, 3, 4, 5].map(() => ({
+                    0: {
+                        type: "application/x-google-chrome-pdf",
+                        suffixes: "pdf",
+                        description: "Portable Document Format",
+                        enabledPlugin: true
+                    }
+                }))
+            });
+            Object.defineProperty(navigator, 'languages', {
+                get: () => ['ko-KR', 'ko', 'en-US', 'en']
+            });
+        });
+
+        // 헤더 설정
+        await page.setExtraHTTPHeaders({
+            'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+            'sec-ch-ua': '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
+            'Upgrade-Insecure-Requests': '1',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+        });
+
+        const searchUrl = `https://www.coupang.com/np/search?q=${encodeURIComponent(searchQuery)}&channel=user`;
+        await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+        await page.waitForSelector('li.search-product', { timeout: 10000 });
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // 상품 정보 크롤링
+        const products = await page.evaluate(() => {
+            const bestSellerSection = document.querySelector('.best-seller-carousel-widget');
+            if (bestSellerSection) bestSellerSection.remove();
+            
+            const timeSaleSection = document.querySelector('.sdw-aging-carousel-widget');
+            if (timeSaleSection) timeSaleSection.remove();
+            
+            const items = document.querySelectorAll('li.search-product:not(.best-seller-carousel-item):not(.sdw-aging-carousel-item)');
+            
+            return Array.from(items).map((item, index) => {
+                const name = item.querySelector('.name')?.textContent.trim() || '';
+                const price = item.querySelector('.price-value')?.textContent.trim() || '';
+                const rating = item.querySelector('.rating')?.style.width || '0%';
+                const reviewCount = item.querySelector('.rating-total-count')?.textContent.replace(/[()]/g, '') || '0';
+                const imageUrl = item.querySelector('img.search-product-wrap-img')?.src || '';
+                const productLink = item.querySelector('a.search-product-link')?.href || '';
+                const isAd = item.querySelector('.ad-badge') !== null;
+                
+                const rocketBadge = item.querySelector('.badge.rocket');
+                const rocketDelivery = rocketBadge ? true : false;
+                const rocketType = rocketBadge ? 
+                    (rocketBadge.querySelector('img')?.src.includes('logo_rocket') ? '로켓배송' : 
+                     rocketBadge.querySelector('img')?.src.includes('logoRocketMerchant') ? '판매자로켓' : '일반배송') : '일반배송';
+                
+                const isRocketGlobal = item.querySelector('.badge.global') !== null;
+                const deliveryType = isRocketGlobal ? '로켓직구' : rocketType;
+                const isRocket = isRocketGlobal ? false : rocketDelivery;
+                
+                const productId = item.getAttribute('data-product-id') || '';
+                const vendorItemId = item.getAttribute('data-vendor-item-id') || '';
+                
+                return {
+                    productId,
+                    vendorItemId,
+                    rank: index + 1,
+                    name,
+                    price,
+                    priceValue: parseInt(price.replace(/[^0-9]/g, '')),
+                    rating: parseFloat(rating) / 20,
+                    reviewCount: parseInt(reviewCount),
+                    imageUrl,
+                    productLink,
+                    isAd,
+                    deliveryType: {
+                        isRocket,
+                        type: deliveryType
+                    }
+                };
+            });
+        });
+
+        // 통계 계산
+        const deliveryStats = products.reduce((acc, product) => {
+            acc[product.deliveryType.type] = (acc[product.deliveryType.type] || 0) + 1;
+            return acc;
+        }, {});
+
+        const rocketDeliveryCount = (deliveryStats['로켓배송'] || 0) + (deliveryStats['판매자로켓'] || 0);
+        const totalCount = products.length - (deliveryStats['로켓직구'] || 0);
+        const rocketDeliveryPercentage = ((rocketDeliveryCount / totalCount) * 100).toFixed(1);
+
+        const adStats = products.reduce((acc, product) => {
+            acc[product.isAd ? '광고' : '일반'] = (acc[product.isAd ? '광고' : '일반'] || 0) + 1;
+            return acc;
+        }, {});
+
+        const prices = products
+            .map(product => product.priceValue)
+            .filter(price => !isNaN(price))
+            .sort((a, b) => a - b);
+
+        const filteredPrices = prices.slice(5, -5);
+        const averagePrice = Math.round(filteredPrices.reduce((sum, price) => sum + price, 0) / filteredPrices.length);
+
+        // 브라우저는 계속 열어둡니다
+        return {
+            products,
+            stats: {
+                rocketDeliveryPercentage,
+                averagePrice,
+                adStats,
+                deliveryStats
+            }
+        };
+    } catch (error) {
+        console.error('쿠팡 검색 중 오류 발생:', error);
+        throw error;
+    }
+});
+
+// 네이버 데이터랩 API 핸들러
+ipcMain.handle('get-naver-trend', async (event, keyword) => {
+    try {
+        const endDate = new Date();
+        endDate.setDate(1);
+        endDate.setDate(endDate.getDate() - 1);
+        
+        const startDate5Y = new Date();
+        startDate5Y.setFullYear(startDate5Y.getFullYear() - 5);
+
+        const startDate3Y = new Date();
+        startDate3Y.setFullYear(startDate3Y.getFullYear() - 3);
+
+        const startDate1Y = new Date();
+        startDate1Y.setFullYear(startDate1Y.getFullYear() - 1);
+
+        const requestBody5Y = {
+            startDate: startDate5Y.toISOString().split('T')[0],
+            endDate: endDate.toISOString().split('T')[0],
+            timeUnit: "month",
+            keywordGroups: [
+                {
+                    groupName: keyword,
+                    keywords: [keyword]
+                }
+            ],
+            device: "pc",
+            ages: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"],
+            gender: "m"
+        };
+
+        const requestBody3Y = {
+            ...requestBody5Y,
+            startDate: startDate3Y.toISOString().split('T')[0]
+        };
+
+        const requestBody1Y = {
+            ...requestBody5Y,
+            startDate: startDate1Y.toISOString().split('T')[0]
+        };
+
+        const [response5Y, response3Y, response1Y] = await Promise.all([
+            axios.post('https://openapi.naver.com/v1/datalab/search', requestBody5Y, {
+                headers: {
+                    'X-Naver-Client-Id': 'GQMIvTMEGg6ea83sZUGe',
+                    'X-Naver-Client-Secret': 'MraZMTF88_',
+                    'Content-Type': 'application/json'
+                }
+            }),
+            axios.post('https://openapi.naver.com/v1/datalab/search', requestBody3Y, {
+                headers: {
+                    'X-Naver-Client-Id': 'GQMIvTMEGg6ea83sZUGe',
+                    'X-Naver-Client-Secret': 'MraZMTF88_',
+                    'Content-Type': 'application/json'
+                }
+            }),
+            axios.post('https://openapi.naver.com/v1/datalab/search', requestBody1Y, {
+                headers: {
+                    'X-Naver-Client-Id': 'GQMIvTMEGg6ea83sZUGe',
+                    'X-Naver-Client-Secret': 'MraZMTF88_',
+                    'Content-Type': 'application/json'
+                }
+            })
+        ]);
+
+        return {
+            fiveYear: response5Y.data.results[0],
+            threeYear: response3Y.data.results[0],
+            oneYear: response1Y.data.results[0]
+        };
+    } catch (error) {
+        console.error('네이버 트렌드 API 호출 중 오류:', error);
         throw error;
     }
 });

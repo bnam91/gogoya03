@@ -6,6 +6,333 @@ export function initPage() {
     initEventListeners();
 }
 
+let currentProducts = []; // 현재 검색 결과 저장
+
 function initEventListeners() {
-    // 여기에 이벤트 리스너를 추가할 예정입니다
+    const searchInput = document.getElementById('coupang-search-input');
+    const searchButton = document.getElementById('coupang-search-button');
+    const searchResults = document.getElementById('coupang-search-results');
+    const loadingIndicator = document.getElementById('coupang-loading');
+    const filterContainer = document.getElementById('coupang-filter-container');
+
+    // 검색 버튼 클릭 이벤트
+    searchButton.addEventListener('click', async () => {
+        const searchQuery = searchInput.value.trim();
+        if (!searchQuery) {
+            alert('검색어를 입력해주세요.');
+            return;
+        }
+
+        try {
+            // 로딩 표시
+            loadingIndicator.style.display = 'block';
+            searchResults.innerHTML = '';
+            filterContainer.style.display = 'none';
+            document.getElementById('coupang-trend-charts').style.display = 'none';
+
+            // 검색과 트렌드 데이터를 병렬로 가져오기
+            const [searchResult, trendResult] = await Promise.all([
+                window.coupangAPI.search(searchQuery),
+                window.coupangAPI.getTrend(searchQuery)
+            ]);
+
+            currentProducts = searchResult.products;
+            displaySearchResults(searchResult);
+            filterContainer.style.display = 'block';
+            await displayTrendCharts(searchQuery);
+
+        } catch (error) {
+            console.error('검색 중 오류 발생:', error);
+            searchResults.innerHTML = `<div class="error-message">검색 중 오류가 발생했습니다: ${error.message}</div>`;
+        } finally {
+            loadingIndicator.style.display = 'none';
+        }
+    });
+
+    // 엔터 키 이벤트
+    searchInput.addEventListener('keypress', (event) => {
+        if (event.key === 'Enter') {
+            searchButton.click();
+        }
+    });
+
+    // 필터 버튼 이벤트
+    filterContainer.addEventListener('click', (event) => {
+        if (event.target.classList.contains('filter-button')) {
+            // 활성화된 버튼 스타일 변경
+            filterContainer.querySelectorAll('.filter-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // 필터링 적용
+            const filterType = event.target.dataset.filter;
+            filterProducts(filterType);
+        }
+    });
+}
+
+function filterProducts(filterType) {
+    let filteredProducts = [...currentProducts];
+
+    switch (filterType) {
+        case 'rocket':
+            filteredProducts = currentProducts.filter(product => 
+                product.deliveryType.type === '로켓배송' || 
+                product.deliveryType.type === '판매자로켓'
+            );
+            break;
+        case 'ad':
+            filteredProducts = currentProducts.filter(product => product.isAd);
+            break;
+        // 'all'인 경우 필터링하지 않음
+    }
+
+    // 필터링된 결과로 통계 재계산
+    const stats = calculateStats(filteredProducts);
+    displaySearchResults({ products: filteredProducts, stats });
+}
+
+function calculateStats(products) {
+    const deliveryStats = products.reduce((acc, product) => {
+        acc[product.deliveryType.type] = (acc[product.deliveryType.type] || 0) + 1;
+        return acc;
+    }, {});
+
+    const rocketDeliveryCount = (deliveryStats['로켓배송'] || 0) + (deliveryStats['판매자로켓'] || 0);
+    const totalCount = products.length - (deliveryStats['로켓직구'] || 0);
+    const rocketDeliveryPercentage = ((rocketDeliveryCount / totalCount) * 100).toFixed(1);
+
+    const adStats = products.reduce((acc, product) => {
+        acc[product.isAd ? '광고' : '일반'] = (acc[product.isAd ? '광고' : '일반'] || 0) + 1;
+        return acc;
+    }, {});
+
+    const prices = products
+        .map(product => product.priceValue)
+        .filter(price => !isNaN(price))
+        .sort((a, b) => a - b);
+
+    const filteredPrices = prices.slice(5, -5);
+    const averagePrice = Math.round(filteredPrices.reduce((sum, price) => sum + price, 0) / filteredPrices.length);
+
+    return {
+        rocketDeliveryPercentage,
+        averagePrice,
+        adStats,
+        deliveryStats
+    };
+}
+
+function getDeliveryBadgeClass(deliveryType) {
+    switch (deliveryType) {
+        case '로켓배송':
+            return 'rocket';
+        case '판매자로켓':
+            return 'seller-rocket';
+        case '로켓직구':
+            return 'global';
+        default:
+            return 'normal';
+    }
+}
+
+function displaySearchResults(data) {
+    const searchResults = document.getElementById('coupang-search-results');
+    
+    // 통계 정보를 먼저 표시
+    const statsHtml = `
+        <div class="stats-container">
+            <h3>검색 결과 통계</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="label">검색된 상품 수</div>
+                    <div class="value">${data.products.length}개</div>
+                </div>
+                <div class="stat-item">
+                    <div class="label">로켓배송 비율</div>
+                    <div class="value">${data.stats.rocketDeliveryPercentage}%</div>
+                </div>
+                <div class="stat-item">
+                    <div class="label">평균 가격</div>
+                    <div class="value">${data.stats.averagePrice.toLocaleString()}원</div>
+                </div>
+                <div class="stat-item">
+                    <div class="label">광고 상품 수</div>
+                    <div class="value">${data.stats.adStats.광고 || 0}개</div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // 상품 목록 표시
+    const productsHtml = data.products.map(product => `
+        <div class="result-item">
+            <h3>${product.name}</h3>
+            <div class="price">${product.price}</div>
+            <div class="delivery-info">
+                <span class="delivery-badge ${getDeliveryBadgeClass(product.deliveryType.type)}">
+                    ${product.deliveryType.type}
+                </span>
+                ${product.isAd ? '<span class="ad-badge">광고</span>' : ''}
+            </div>
+            <div class="rating">
+                ★ ${product.rating.toFixed(1)}
+                <span class="review-count">(${product.reviewCount}개)</span>
+            </div>
+        </div>
+    `).join('');
+
+    // 통계 정보를 먼저 표시하고 그 다음에 상품 목록 표시
+    searchResults.innerHTML = statsHtml + productsHtml;
+}
+
+// Chart.js 스크립트 동적 로드
+function loadChartJS() {
+    return new Promise((resolve, reject) => {
+        if (window.Chart) {
+            resolve();
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+}
+
+let trendCharts = {
+    fiveYear: null,
+    threeYear: null,
+    oneYear: null
+};
+
+async function displayTrendCharts(keyword) {
+    try {
+        await loadChartJS();
+        
+        const trendChartsContainer = document.getElementById('coupang-trend-charts');
+        trendChartsContainer.style.display = 'block';
+
+        // 기존 차트 제거
+        Object.values(trendCharts).forEach(chart => {
+            if (chart) chart.destroy();
+        });
+
+        // 트렌드 데이터 가져오기
+        const trendData = await window.coupangAPI.getTrend(keyword);
+
+        // 5년 차트
+        trendCharts.fiveYear = new Chart(document.getElementById('trendChart5Y'), {
+            type: 'line',
+            data: {
+                labels: trendData.fiveYear.data.map(item => item.period),
+                datasets: [{
+                    label: `${trendData.fiveYear.title} 검색량 (5년)`,
+                    data: trendData.fiveYear.data.map(item => item.ratio),
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1,
+                    fill: true,
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '5년간 월별 검색 트렌드',
+                        font: { size: 14 }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '검색량 (%)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // 3년 차트
+        trendCharts.threeYear = new Chart(document.getElementById('trendChart3Y'), {
+            type: 'line',
+            data: {
+                labels: trendData.threeYear.data.map(item => item.period),
+                datasets: [{
+                    label: `${trendData.threeYear.title} 검색량 (3년)`,
+                    data: trendData.threeYear.data.map(item => item.ratio),
+                    borderColor: 'rgb(255, 99, 132)',
+                    tension: 0.1,
+                    fill: true,
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '3년간 월별 검색 트렌드',
+                        font: { size: 14 }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '검색량 (%)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // 1년 차트
+        trendCharts.oneYear = new Chart(document.getElementById('trendChart1Y'), {
+            type: 'line',
+            data: {
+                labels: trendData.oneYear.data.map(item => item.period),
+                datasets: [{
+                    label: `${trendData.oneYear.title} 검색량 (1년)`,
+                    data: trendData.oneYear.data.map(item => item.ratio),
+                    borderColor: 'rgb(54, 162, 235)',
+                    tension: 0.1,
+                    fill: true,
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '1년간 월별 검색 트렌드',
+                        font: { size: 14 }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '검색량 (%)'
+                        }
+                    }
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('트렌드 차트 표시 중 오류:', error);
+        document.getElementById('coupang-trend-charts').style.display = 'none';
+    }
 } 

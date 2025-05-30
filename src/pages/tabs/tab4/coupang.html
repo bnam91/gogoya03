@@ -10,11 +10,44 @@
     <div class="coupang-container">
         <h2>쿠팡 관리</h2>
         
-        <!-- 컨텐츠 영역 -->
+        <!-- 검색 영역 -->
+        <div class="search-container">
+            <input type="text" id="coupang-search-input" class="search-input" placeholder="검색어를 입력하세요">
+            <button id="coupang-search-button" class="search-button">검색</button>
+        </div>
+
+        <!-- 필터 영역 -->
+        <div id="coupang-filter-container" class="filter-container" style="display: none;">
+            <div class="filter-group">
+                <button class="filter-button active" data-filter="all">전체보기</button>
+                <button class="filter-button" data-filter="rocket">로켓배송만</button>
+                <button class="filter-button" data-filter="ad">광고만</button>
+            </div>
+        </div>
+
+        <!-- 결과 표시 영역 -->
         <div class="coupang-content-container">
-            <!-- 여기에 쿠팡 관련 컨텐츠가 들어갈 예정입니다 -->
-            <div class="placeholder-message">
-                쿠팡 관련 기능이 곧 추가될 예정입니다.
+            <!-- 트렌드 차트 영역 -->
+            <div id="coupang-trend-charts" class="trend-charts-container" style="display: none;">
+                <h3>검색어 트렌드 분석</h3>
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <canvas id="trendChart5Y"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="trendChart3Y"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="trendChart1Y"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div id="coupang-search-results" class="search-results">
+                <!-- 검색 결과가 여기에 표시됩니다 -->
+            </div>
+            <div id="coupang-loading" class="loading-indicator" style="display: none;">
+                검색 중입니다...
             </div>
         </div>
     </div>
