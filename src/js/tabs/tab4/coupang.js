@@ -31,18 +31,24 @@ function initEventListeners() {
             document.getElementById('coupang-trend-charts').style.display = 'none';
             document.getElementById('coupang-keyword-stats').style.display = 'none';
 
+            // 네이버 검색광고 API용 키워드 (띄어쓰기 제거)
+            const keywordForNaverAPI = searchQuery.replace(/\s+/g, '');
+
             // 검색, 트렌드, 키워드 통계를 병렬로 가져오기
             const [searchResult, trendResult, keywordStats] = await Promise.all([
                 window.coupangAPI.search(searchQuery),
                 window.coupangAPI.getTrend(searchQuery),
-                window.coupangAPI.getKeywordStats(searchQuery)
+                window.coupangAPI.getKeywordStats(keywordForNaverAPI) // 띄어쓰기 제거된 키워드 사용
             ]);
 
             currentProducts = searchResult.products;
-            displaySearchResults(searchResult);
+            console.log('검색 결과 상품 목록:', currentProducts);
+            const initialStats = calculateStats(currentProducts);
+            console.log('초기 통계 계산 결과:', initialStats);
+            displaySearchResults({ products: currentProducts, stats: initialStats });
             filterContainer.style.display = 'block';
             await displayTrendCharts(searchQuery);
-            displayKeywordStats(keywordStats, searchQuery);
+            displayKeywordStats(keywordStats, searchQuery); // 원본 검색어 전달 (표시용)
 
         } catch (error) {
             console.error('검색 중 오류 발생:', error);
@@ -76,6 +82,9 @@ function initEventListeners() {
 }
 
 function filterProducts(filterType) {
+    console.log('filterProducts 시작 - 필터 타입:', filterType);
+    console.log('현재 상품 목록:', currentProducts);
+    
     let filteredProducts = [...currentProducts];
 
     switch (filterType) {
@@ -91,12 +100,31 @@ function filterProducts(filterType) {
         // 'all'인 경우 필터링하지 않음
     }
 
+    console.log('필터링된 상품 목록:', filteredProducts);
+
     // 필터링된 결과로 통계 재계산
     const stats = calculateStats(filteredProducts);
+    console.log('계산된 통계:', stats);
+
     displaySearchResults({ products: filteredProducts, stats });
 }
 
 function calculateStats(products) {
+    console.log('calculateStats 입력 데이터:', products);
+    console.log('products 길이:', products?.length);
+
+    if (!products || products.length === 0) {
+        console.log('products가 비어있음');
+        return {
+            rocketDeliveryPercentage: '0.0',
+            averagePrice: 0,
+            adStats: { 광고: 0, 일반: 0 },
+            deliveryStats: {},
+            lowReviewCount: 0,
+            lowReviewPercentage: '0.0'
+        };
+    }
+
     const deliveryStats = products.reduce((acc, product) => {
         acc[product.deliveryType.type] = (acc[product.deliveryType.type] || 0) + 1;
         return acc;
@@ -104,7 +132,7 @@ function calculateStats(products) {
 
     const rocketDeliveryCount = (deliveryStats['로켓배송'] || 0) + (deliveryStats['판매자로켓'] || 0);
     const totalCount = products.length - (deliveryStats['로켓직구'] || 0);
-    const rocketDeliveryPercentage = ((rocketDeliveryCount / totalCount) * 100).toFixed(1);
+    const rocketDeliveryPercentage = totalCount > 0 ? ((rocketDeliveryCount / totalCount) * 100).toFixed(1) : '0.0';
 
     const adStats = products.reduce((acc, product) => {
         acc[product.isAd ? '광고' : '일반'] = (acc[product.isAd ? '광고' : '일반'] || 0) + 1;
@@ -117,13 +145,39 @@ function calculateStats(products) {
         .sort((a, b) => a - b);
 
     const filteredPrices = prices.slice(5, -5);
-    const averagePrice = Math.round(filteredPrices.reduce((sum, price) => sum + price, 0) / filteredPrices.length);
+    const averagePrice = filteredPrices.length > 0 
+        ? Math.round(filteredPrices.reduce((sum, price) => sum + price, 0) / filteredPrices.length)
+        : 0;
+
+    // 상위 12개 상품의 리뷰 수 분석
+    const top12Products = products.slice(0, Math.min(12, products.length));
+    console.log('상위 12개 상품:', top12Products);
+    console.log('각 상품의 리뷰 수:', top12Products.map(p => p.reviewCount));
+
+    const lowReviewProducts = top12Products.filter(product => {
+        console.log('상품 리뷰 수 확인:', product.name, product.reviewCount);
+        return product.reviewCount !== undefined && product.reviewCount < 100;
+    });
+    console.log('리뷰 100개 미만 상품:', lowReviewProducts);
+
+    const lowReviewCount = lowReviewProducts.length;
+    const lowReviewPercentage = top12Products.length > 0 
+        ? ((lowReviewCount / top12Products.length) * 100).toFixed(1)
+        : '0.0';
+
+    console.log('최종 계산된 값:', {
+        lowReviewCount,
+        lowReviewPercentage,
+        top12Length: top12Products.length
+    });
 
     return {
         rocketDeliveryPercentage,
         averagePrice,
         adStats,
-        deliveryStats
+        deliveryStats,
+        lowReviewCount,
+        lowReviewPercentage
     };
 }
 
@@ -141,6 +195,9 @@ function getDeliveryBadgeClass(deliveryType) {
 }
 
 function displaySearchResults(data) {
+    console.log('displaySearchResults 입력 데이터:', data);
+    console.log('stats 데이터:', data.stats);
+    
     const searchResults = document.getElementById('coupang-search-results');
     
     // 통계 정보를 먼저 표시
@@ -163,6 +220,10 @@ function displaySearchResults(data) {
                 <div class="stat-item">
                     <div class="label">광고 상품 수</div>
                     <div class="value">${data.stats.adStats.광고 || 0}개</div>
+                </div>
+                <div class="stat-item">
+                    <div class="label">상위 12개 중 리뷰 100개 미만</div>
+                    <div class="value">${data.stats.lowReviewCount || 0}개 (${data.stats.lowReviewPercentage || '0.0'}%)</div>
                 </div>
             </div>
         </div>
