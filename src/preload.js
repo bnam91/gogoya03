@@ -34,7 +34,10 @@ contextBridge.exposeInMainWorld('api', {
   readExcelFile: (filePath) => ipcRenderer.invoke('read-excel-file', filePath),
   updateInfluencerName: (username, newName) => ipcRenderer.invoke('update-influencer-name', { username, newName }),
   updateInfluencerRookieStatus: (username, isRookie) => ipcRenderer.invoke('update-influencer-rookie-status', { username, isRookie }),
-  saveInfluencerMemo: (username, memo) => ipcRenderer.invoke('save-influencer-memo', username, memo)
+  saveInfluencerMemo: (username, memo) => ipcRenderer.invoke('save-influencer-memo', username, memo),
+  getKeyword500Categories: () => ipcRenderer.invoke('get-keyword500-categories'),
+  getKeyword500Keywords: (categoryId) => ipcRenderer.invoke('get-keyword500-keywords', categoryId),
+  updateKeyword500Status: (data) => ipcRenderer.invoke('update-keyword500-status', data)
 });
 
 contextBridge.exposeInMainWorld('googleSheetApi', {

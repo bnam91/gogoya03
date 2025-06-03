@@ -30,7 +30,9 @@ export const menuData = [
       title: "커머스",
       tabClass: "tab4",
       children: [
-        { title: "쿠팡", page: "tab4/coupang" }
+        { title: "쿠팡", page: "tab4/coupang" },
+        { title: "키워드500", page: "tab4/keyword500" },
+        { title: "관심키워드", page: "tab4/interest-keyword" }
       ]
     },
     {

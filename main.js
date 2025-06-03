@@ -27,6 +27,7 @@ import puppeteer from 'puppeteer';
 import axios from 'axios';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import crypto from 'crypto';
+import { ObjectId } from 'mongodb';
 let authInstance; // 전역에 저장
 // 인코딩 설정
 process.env.CHARSET = 'UTF-8';
@@ -1138,6 +1139,117 @@ ipcMain.handle('get-naver-keyword-stats', async (event, keyword) => {
         return processedData;
     } catch (error) {
         console.error('네이버 검색광고 API 호출 중 오류:', error);
+        throw error;
+    }
+});
+
+// MongoDB 클라이언트 접근을 위한 IPC 핸들러
+ipcMain.handle('get-mongo-client', async () => {
+    try {
+        const client = await getMongoClient();
+        return client;
+    } catch (error) {
+        console.error('MongoDB 클라이언트 연결 중 오류 발생:', error);
+        throw error;
+    }
+});
+
+// 키워드500 관련 IPC 핸들러
+ipcMain.handle('get-keyword500-categories', async () => {
+    try {
+        const client = await getMongoClient();
+        const db = client.db('insta09_database');
+        const collection = db.collection('gogoya_keyword500');
+
+        const categories = await collection.find({}, {
+            projection: {
+                _id: 1,
+                category: 1,
+                'keyword_history.date': 1
+            }
+        }).toArray();
+
+        // ObjectId를 문자열로 변환
+        return categories.map(category => ({
+            ...category,
+            _id: category._id.toString()
+        }));
+    } catch (error) {
+        console.error('키워드500 카테고리 조회 중 오류 발생:', error);
+        throw error;
+    }
+});
+
+ipcMain.handle('get-keyword500-keywords', async (event, categoryId) => {
+    try {
+        if (!categoryId) {
+            throw new Error('카테고리 ID가 필요합니다.');
+        }
+
+        const client = await getMongoClient();
+        const db = client.db('insta09_database');
+        const collection = db.collection('gogoya_keyword500');
+
+        const categoryData = await collection.findOne(
+            { _id: categoryId },
+            { projection: { category: 1, keyword_history: 1 } }
+        );
+
+        if (!categoryData || !categoryData.keyword_history.length) {
+            throw new Error('키워드 데이터가 없습니다.');
+        }
+
+        // keyword_history 배열을 날짜 기준으로 정렬하여 가장 최신 데이터 가져오기
+        const sortedHistory = categoryData.keyword_history.sort((a, b) => {
+            return new Date(b.date) - new Date(a.date);
+        });
+
+        const latestData = sortedHistory[0];
+
+        return {
+            category: categoryData.category,
+            keywords: latestData.keywords,
+            date: latestData.date
+        };
+    } catch (error) {
+        console.error('키워드500 키워드 조회 중 오류 발생:', error);
+        throw error;
+    }
+});
+
+// 키워드500 상태 업데이트 IPC 핸들러
+ipcMain.handle('update-keyword500-status', async (event, { categoryId, keyword, status }) => {
+    try {
+        const client = await getMongoClient();
+        const db = client.db('insta09_database');
+        const collection = db.collection('gogoya_keyword500');
+
+        // 현재 날짜의 키워드 히스토리 업데이트
+        const result = await collection.updateOne(
+            { 
+                _id: categoryId,
+                'keyword_history.date': { $exists: true }
+            },
+            { 
+                $set: {
+                    'keyword_history.$[elem].keywords.$[keyword].status': status
+                }
+            },
+            {
+                arrayFilters: [
+                    { 'elem.date': { $exists: true } },
+                    { 'keyword.keyword': keyword }
+                ]
+            }
+        );
+
+        if (result.matchedCount === 0) {
+            throw new Error('키워드를 찾을 수 없습니다.');
+        }
+
+        return { success: true };
+    } catch (error) {
+        console.error('키워드 상태 업데이트 중 오류 발생:', error);
         throw error;
     }
 });
