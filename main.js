@@ -28,6 +28,7 @@ import axios from 'axios';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import crypto from 'crypto';
 import { ObjectId } from 'mongodb';
+import { createSubpageWithCallout } from './src/js/classes/tab2/notion_module/createSubpage.js';
 let authInstance; // 전역에 저장
 // 인코딩 설정
 process.env.CHARSET = 'UTF-8';
@@ -1254,6 +1255,17 @@ ipcMain.handle('update-keyword500-status', async (event, { categoryId, keyword, 
     }
 });
 
+// 브랜드 웹사이트 URL 가져오기
+ipcMain.handle('get-brand-website-url', async (event, brandName) => {
+    try {
+        const mongoModule = await import('./src/js/databases/mongo.js');
+        return await mongoModule.getBrandWebsiteUrl(brandName);
+    } catch (error) {
+        console.error('브랜드 웹사이트 URL 조회 실패:', error);
+        return null;
+    }
+});
+
 // ===========================================
 // Electron 앱 윈도우 생성
 // ===========================================
@@ -1411,5 +1423,40 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit();
+    }
+});
+
+// 노션 업로드 핸들러
+ipcMain.handle('notion-upload', async (event, sourcingData) => {
+    try {
+        const { createSubpageWithCallout } = await import('./src/js/classes/tab2/notion_module/createSubpage.js');
+        const { addItemsToDatabase } = await import('./src/js/classes/tab2/notion_module/utils/databaseUtils.js');
+
+        // 서브페이지와 데이터베이스 생성
+        const result = await createSubpageWithCallout(sourcingData.cleanName);
+        
+        if (!result.pageId || !result.dbId) {
+            throw new Error('서브페이지 또는 데이터베이스 생성 실패');
+        }
+
+        // 데이터베이스에 아이템 추가
+        const uploadResult = await addItemsToDatabase(result.dbId, sourcingData.data);
+        if (!uploadResult) {
+            throw new Error('데이터베이스에 아이템 추가 실패');
+        }
+        
+        return {
+            success: true,
+            message: '노션 업로드가 완료되었습니다.',
+            pageId: result.pageId,
+            dbId: result.dbId,
+            pageUrl: result.pageUrl
+        };
+    } catch (error) {
+        console.error('노션 업로드 실패:', error);
+        return {
+            success: false,
+            message: error.message || '노션 업로드 중 오류가 발생했습니다.'
+        };
     }
 });

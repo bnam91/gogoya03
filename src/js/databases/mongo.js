@@ -335,3 +335,16 @@ export async function getInfluencerList() {
         return data;
     });
 }  
+
+export async function getBrandWebsiteUrl(brandName) {
+    return withRetry(async () => {
+        const client = await getMongoClient();
+        const db = client.db('insta09_database');
+        const collection = db.collection('gogoya_vendor_brand_info');
+        const result = await collection.findOne(
+            { brand_name: brandName },
+            { projection: { official_website_url: 1 } }
+        );
+        return result ? result.official_website_url : null;
+    });
+}  

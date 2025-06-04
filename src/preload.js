@@ -37,7 +37,8 @@ contextBridge.exposeInMainWorld('api', {
   saveInfluencerMemo: (username, memo) => ipcRenderer.invoke('save-influencer-memo', username, memo),
   getKeyword500Categories: () => ipcRenderer.invoke('get-keyword500-categories'),
   getKeyword500Keywords: (categoryId) => ipcRenderer.invoke('get-keyword500-keywords', categoryId),
-  updateKeyword500Status: (data) => ipcRenderer.invoke('update-keyword500-status', data)
+  updateKeyword500Status: (data) => ipcRenderer.invoke('update-keyword500-status', data),
+  getBrandWebsiteUrl: (brandName) => ipcRenderer.invoke('get-brand-website-url', brandName)
 });
 
 contextBridge.exposeInMainWorld('googleSheetApi', {
@@ -58,4 +59,8 @@ contextBridge.exposeInMainWorld('coupangAPI', {
     search: (query) => ipcRenderer.invoke('search-coupang', query),
     getTrend: (keyword) => ipcRenderer.invoke('get-naver-trend', keyword),
     getKeywordStats: (keyword) => ipcRenderer.invoke('get-naver-keyword-stats', keyword)
+});
+
+contextBridge.exposeInMainWorld('notionAPI', {
+    uploadToNotion: (data) => ipcRenderer.invoke('notion-upload', data)
 });
