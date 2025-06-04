@@ -9,7 +9,8 @@ const { autoUpdater } = updater;
 import {
     getBrandContactData, getBrandPhoneData, saveCallRecord,
     getCallRecords, getLatestCallRecordByCardId, updateBrandInfo,
-    updateCallRecord, getCallRecordById, getMongoClient, updateNextStep
+    updateCallRecord, getCallRecordById, getMongoClient, updateNextStep,
+    saveKeyword500Pick, removeKeyword500Pick
 } from './src/js/databases/mongo.js'; // Electron Main 프로세스에서 연결
 import { fileURLToPath } from 'url';
 import { makeCall, endCall } from './src/js/utils/phone.js';
@@ -1218,39 +1219,51 @@ ipcMain.handle('get-keyword500-keywords', async (event, categoryId) => {
     }
 });
 
-// 키워드500 상태 업데이트 IPC 핸들러
-ipcMain.handle('update-keyword500-status', async (event, { categoryId, keyword, status }) => {
+// 키워드500 선택된 키워드 조회 핸들러
+ipcMain.handle('get-keyword500-picked-keywords', async (event, categoryId) => {
     try {
         const client = await getMongoClient();
         const db = client.db('insta09_database');
-        const collection = db.collection('gogoya_keyword500');
-
-        // 현재 날짜의 키워드 히스토리 업데이트
-        const result = await collection.updateOne(
+        const collection = db.collection('gogoya_keyword_Gold');
+        
+        const pickedKeywords = await collection.find(
             { 
-                _id: categoryId,
-                'keyword_history.date': { $exists: true }
+                category_id: categoryId,
+                status: 'pick'
             },
-            { 
-                $set: {
-                    'keyword_history.$[elem].keywords.$[keyword].status': status
-                }
-            },
-            {
-                arrayFilters: [
-                    { 'elem.date': { $exists: true } },
-                    { 'keyword.keyword': keyword }
-                ]
-            }
-        );
-
-        if (result.matchedCount === 0) {
-            throw new Error('키워드를 찾을 수 없습니다.');
-        }
-
-        return { success: true };
+            { projection: { keyword: 1, search_volume: 1, search_volume_updated_at: 1, _id: 0 } }
+        ).toArray();
+        
+        // 검색량 정보와 업데이트 날짜를 포함한 객체 배열로 변환
+        return pickedKeywords.map(item => ({
+            keyword: item.keyword,
+            searchVolume: item.search_volume || null,
+            searchVolumeUpdatedAt: item.search_volume_updated_at || null
+        }));
     } catch (error) {
-        console.error('키워드 상태 업데이트 중 오류 발생:', error);
+        console.error('선택된 키워드 조회 중 오류 발생:', error);
+        throw error;
+    }
+});
+
+// 키워드500 키워드 선택 상태 저장 핸들러
+ipcMain.handle('save-keyword500-pick', async (event, { categoryId, keyword, searchVolume }) => {
+    try {
+        const result = await saveKeyword500Pick(categoryId, keyword, searchVolume);
+        return result;
+    } catch (error) {
+        console.error('키워드 저장 실패:', error);
+        throw error;
+    }
+});
+
+// 키워드500 키워드 선택 해제 핸들러
+ipcMain.handle('remove-keyword500-pick', async (event, { categoryId, keyword }) => {
+    try {
+        const result = await removeKeyword500Pick(categoryId, keyword);
+        return result;
+    } catch (error) {
+        console.error('키워드500 선택 해제 중 오류 발생:', error);
         throw error;
     }
 });
@@ -1263,6 +1276,17 @@ ipcMain.handle('get-brand-website-url', async (event, brandName) => {
     } catch (error) {
         console.error('브랜드 웹사이트 URL 조회 실패:', error);
         return null;
+    }
+});
+
+// 외부 링크를 크롬 창으로 여는 핸들러
+ipcMain.handle('open-external-link', async (event, url) => {
+    try {
+        await shell.openExternal(url);
+        return true;
+    } catch (error) {
+        console.error('외부 링크 열기 실패:', error);
+        throw error;
     }
 });
 

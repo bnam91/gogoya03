@@ -37,8 +37,12 @@ contextBridge.exposeInMainWorld('api', {
   saveInfluencerMemo: (username, memo) => ipcRenderer.invoke('save-influencer-memo', username, memo),
   getKeyword500Categories: () => ipcRenderer.invoke('get-keyword500-categories'),
   getKeyword500Keywords: (categoryId) => ipcRenderer.invoke('get-keyword500-keywords', categoryId),
+  getKeyword500PickedKeywords: (categoryId) => ipcRenderer.invoke('get-keyword500-picked-keywords', categoryId),
+  saveKeyword500Pick: (categoryId, keyword, searchVolume) => ipcRenderer.invoke('save-keyword500-pick', { categoryId, keyword, searchVolume }),
+  removeKeyword500Pick: (categoryId, keyword) => ipcRenderer.invoke('remove-keyword500-pick', { categoryId, keyword }),
   updateKeyword500Status: (data) => ipcRenderer.invoke('update-keyword500-status', data),
-  getBrandWebsiteUrl: (brandName) => ipcRenderer.invoke('get-brand-website-url', brandName)
+  getBrandWebsiteUrl: (brandName) => ipcRenderer.invoke('get-brand-website-url', brandName),
+  openExternalLink: (url) => ipcRenderer.invoke('open-external-link', url)
 });
 
 contextBridge.exposeInMainWorld('googleSheetApi', {

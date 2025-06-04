@@ -95,19 +95,43 @@ function initEventListeners() {
 
     // 키워드 아이템 클릭 이벤트
     if (keywordListElement) {
+        // 클릭 이벤트 - 선택 상태만 변경
         keywordListElement.addEventListener('click', (event) => {
             const keywordItem = event.target.closest('.keyword-item');
             if (keywordItem) {
+                // 체크박스 클릭은 무시
+                if (event.target.classList.contains('keyword-checkbox')) {
+                    return;
+                }
+
                 const items = keywordListElement.querySelectorAll('.keyword-item');
                 selectedKeywordIndex = Array.from(items).indexOf(keywordItem);
                 updateSelectedKeyword();
+            }
+        });
+
+        // 더블클릭 이벤트 - 네이버 검색 링크 열기
+        keywordListElement.addEventListener('dblclick', (event) => {
+            const keywordItem = event.target.closest('.keyword-item');
+            if (keywordItem) {
+                // 체크박스 더블클릭은 무시
+                if (event.target.classList.contains('keyword-checkbox')) {
+                    return;
+                }
+
+                // 키워드 텍스트 가져오기
+                const keywordText = keywordItem.querySelector('.keyword-text').textContent;
+                // 네이버 검색 URL 생성
+                const searchUrl = `https://search.naver.com/search.naver?where=nexearch&&query=${encodeURIComponent(keywordText)}`;
+                // 크롬 창으로 URL 열기
+                window.api.openExternalLink(searchUrl);
             }
         });
     }
 }
 
 function initKeyboardNavigation() {
-    document.addEventListener('keydown', (event) => {
+    document.addEventListener('keydown', async (event) => {
         const keywordListElement = document.getElementById('keyword500-keyword-list');
         if (!keywordListElement || !currentKeywords) return;
 
@@ -140,6 +164,16 @@ function initKeyboardNavigation() {
                         checkbox.checked = !checkbox.checked;
                         // 체크박스 change 이벤트 수동 트리거
                         checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+                break;
+            case 'o':
+                event.preventDefault();
+                if (selectedKeywordIndex >= 0) {
+                    const selectedItem = items[selectedKeywordIndex];
+                    const searchVolumeButton = selectedItem.querySelector('.search-volume-button');
+                    if (searchVolumeButton && !searchVolumeButton.disabled) {
+                        searchVolumeButton.click();
                     }
                 }
                 break;
@@ -179,9 +213,23 @@ function scrollToSelectedItem(item) {
 async function loadKeywordList(categoryId) {
     try {
         console.log('키워드 목록 로드 시작:', categoryId);
-        currentCategoryId = categoryId; // 현재 카테고리 ID 저장
-        const data = await window.api.getKeyword500Keywords(categoryId);
-        console.log('로드된 키워드 데이터:', data);
+        currentCategoryId = categoryId;
+        
+        const [keywordData, pickedKeywords] = await Promise.all([
+            window.api.getKeyword500Keywords(categoryId),
+            window.api.getKeyword500PickedKeywords(categoryId)
+        ]);
+        
+        console.log('로드된 키워드 데이터:', keywordData);
+        console.log('선택된 키워드:', pickedKeywords);
+
+        // 선택된 키워드와 검색량 정보를 Map으로 변환
+        const pickedKeywordsMap = new Map(
+            pickedKeywords.map(item => [item.keyword, {
+                searchVolume: item.searchVolume,
+                searchVolumeUpdatedAt: item.searchVolumeUpdatedAt
+            }])
+        );
 
         const categoryPathElement = document.getElementById('keyword500-category-path');
         const dateElement = document.getElementById('keyword500-date');
@@ -192,18 +240,39 @@ async function loadKeywordList(categoryId) {
         }
 
         // 카테고리 경로 표시
-        categoryPathElement.textContent = `${data.category.first} > ${data.category.second}`;
+        categoryPathElement.textContent = `${keywordData.category.first} > ${keywordData.category.second}`;
 
         // 날짜 표시
-        dateElement.textContent = `최근 업데이트: ${new Date(data.date).toLocaleDateString()}`;
+        dateElement.textContent = `최근 업데이트: ${new Date(keywordData.date).toLocaleDateString()}`;
 
         // 키워드 목록 표시
-        if (!data.keywords || !Array.isArray(data.keywords)) {
+        if (!keywordData.keywords || !Array.isArray(keywordData.keywords)) {
             throw new Error('유효하지 않은 키워드 데이터 형식입니다.');
         }
 
+        // 키워드 필터링
+        const filteredKeywords = keywordData.keywords.filter(keyword => {
+            // 영어로만 된 키워드 제외 (한글이 하나라도 포함되어 있어야 함)
+            const hasKorean = /[가-힣]/.test(keyword.keyword);
+            // 2글자 이하 또는 8글자 이상인 키워드 제외
+            const isValidLength = keyword.keyword.length > 2 && keyword.keyword.length < 8;
+            
+            return hasKorean && isValidLength;
+        });
+
+        // 선택된 키워드 상태 적용
+        const keywordsWithStatus = filteredKeywords.map(keyword => {
+            const pickedInfo = pickedKeywordsMap.get(keyword.keyword);
+            return {
+                ...keyword,
+                status: pickedKeywordsMap.has(keyword.keyword) ? 'pick' : 'none',
+                searchVolume: pickedInfo?.searchVolume || null,
+                searchVolumeUpdatedAt: pickedInfo?.searchVolumeUpdatedAt || null
+            };
+        });
+
         // 현재 키워드 데이터 저장
-        currentKeywords = data.keywords;
+        currentKeywords = keywordsWithStatus;
         selectedKeywordIndex = -1; // 선택 초기화
 
         keywordListElement.innerHTML = '';
@@ -222,10 +291,10 @@ async function loadKeywordList(categoryId) {
         const rankHeader = document.getElementById('rank-sort-header');
         rankHeader.addEventListener('click', () => {
             isAscending = !isAscending;
-            renderKeywordList(data.keywords);
+            renderKeywordList(keywordsWithStatus);
         });
 
-        renderKeywordList(data.keywords);
+        renderKeywordList(keywordsWithStatus);
         console.log('키워드 목록 표시 완료');
     } catch (error) {
         console.error('키워드 목록 로드 중 오류:', error);
@@ -263,15 +332,31 @@ function renderKeywordList(keywords) {
     keywordListElement.innerHTML = '';
     if (header) keywordListElement.appendChild(header);
 
+    // 헤더에 검색량 칼럼 추가
+    const headerHtml = `
+        <div class="checkbox-header"></div>
+        <div class="rank-header" id="rank-sort-header">순위 ${isAscending ? '↑' : '↓'}</div>
+        <div class="keyword-header">키워드</div>
+        <div class="search-volume-header">검색량</div>
+    `;
+    header.innerHTML = headerHtml;
+
     // 정렬된 키워드 목록 생성
     const sortedKeywords = [...keywords].sort((a, b) => {
-        return isAscending ? a.rank - b.rank : b.rank - a.rank;
+        const rankA = parseInt(a.rank);
+        const rankB = parseInt(b.rank);
+        return isAscending ? rankA - rankB : rankB - rankA;
     });
 
     // 정렬 방향에 따른 헤더 텍스트 업데이트
     const rankHeader = document.getElementById('rank-sort-header');
     if (rankHeader) {
         rankHeader.textContent = `순위 ${isAscending ? '↑' : '↓'}`;
+        rankHeader.style.cursor = 'pointer';
+        rankHeader.addEventListener('click', () => {
+            isAscending = !isAscending;
+            renderKeywordList(keywords);
+        });
     }
 
     sortedKeywords.forEach((item, index) => {
@@ -291,11 +376,14 @@ function renderKeywordList(keywords) {
             event.stopPropagation(); // 클릭 이벤트 전파 방지
             try {
                 const status = event.target.checked ? 'pick' : 'none';
-                await window.api.updateKeyword500Status({
-                    categoryId: currentCategoryId,
-                    keyword: item.keyword,
-                    status: status
-                });
+                
+                // gogoya_keyword_Gold 컬렉션에 저장
+                if (status === 'pick') {
+                    await window.api.saveKeyword500Pick(currentCategoryId, item.keyword);
+                } else {
+                    await window.api.removeKeyword500Pick(currentCategoryId, item.keyword);
+                }
+                
                 // 로컬 데이터 업데이트
                 item.status = status;
                 // picked 클래스 토글
@@ -315,10 +403,66 @@ function renderKeywordList(keywords) {
         const keywordSpan = document.createElement('span');
         keywordSpan.className = 'keyword-text';
         keywordSpan.textContent = item.keyword;
+
+        // 검색량 조회 버튼 컨테이너
+        const searchVolumeContainer = document.createElement('div');
+        searchVolumeContainer.className = 'search-volume-container';
+        
+        const searchVolumeButton = document.createElement('button');
+        searchVolumeButton.className = 'search-volume-button';
+        
+        // 저장된 검색량이 있으면 표시
+        if (item.searchVolume !== null) {
+            const date = new Date(item.searchVolumeUpdatedAt);
+            const formattedDate = `${date.getFullYear().toString().slice(-2)}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+            searchVolumeButton.innerHTML = `
+                <span class="search-volume-count">${item.searchVolume.toLocaleString()}회</span>
+                <span class="search-volume-date">${formattedDate}</span>
+            `;
+        } else {
+            searchVolumeButton.textContent = '검색량 조회';
+        }
+
+        searchVolumeButton.addEventListener('click', async (event) => {
+            event.stopPropagation(); // 클릭 이벤트 전파 방지
+            try {
+                searchVolumeButton.disabled = true;
+                searchVolumeButton.innerHTML = '<span class="search-volume-count">조회중...</span>';
+                
+                // 네이버 검색량 조회 API 호출
+                const keywordStats = await window.coupangAPI.getKeywordStats(item.keyword);
+                const searchKeywordData = keywordStats.find(k => k.keyword === item.keyword);
+                
+                if (searchKeywordData) {
+                    const totalCount = searchKeywordData.totalCount;
+                    const now = new Date();
+                    const formattedDate = `${now.getFullYear().toString().slice(-2)}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
+                    searchVolumeButton.innerHTML = `
+                        <span class="search-volume-count">${totalCount.toLocaleString()}회</span>
+                        <span class="search-volume-date">${formattedDate}</span>
+                    `;
+                    
+                    // 키워드가 선택된 상태라면 검색량도 함께 저장
+                    if (item.status === 'pick') {
+                        await window.api.saveKeyword500Pick(currentCategoryId, item.keyword, totalCount);
+                    }
+                } else {
+                    searchVolumeButton.innerHTML = '<span class="search-volume-count">데이터 없음</span>';
+                }
+            } catch (error) {
+                console.error('검색량 조회 실패:', error);
+                searchVolumeButton.innerHTML = '<span class="search-volume-count">조회 실패</span>';
+            } finally {
+                searchVolumeButton.disabled = false;
+            }
+        });
+        
+        searchVolumeContainer.appendChild(searchVolumeButton);
         
         keywordItem.appendChild(checkbox);
         keywordItem.appendChild(rankSpan);
         keywordItem.appendChild(keywordSpan);
+        keywordItem.appendChild(searchVolumeContainer);
         keywordListElement.appendChild(keywordItem);
     });
 

@@ -348,3 +348,59 @@ export async function getBrandWebsiteUrl(brandName) {
         return result ? result.official_website_url : null;
     });
 }  
+
+export async function saveKeyword500Pick(categoryId, keyword, searchVolume) {
+    return withRetry(async () => {
+        const client = await getMongoClient();
+        const db = client.db('insta09_database');
+        const collection = db.collection('gogoya_keyword_Gold');
+        
+        const [firstCategory, secondCategory] = categoryId.split('_');
+        
+        const updateData = {
+            keyword: keyword,
+            category_id: categoryId,
+            first_category: firstCategory,
+            second_category: secondCategory,
+            picked_date: new Date(),
+            status: 'pick'
+        };
+
+        // 검색량이 있는 경우에만 추가
+        if (searchVolume !== null) {
+            updateData.search_volume = searchVolume;
+            updateData.search_volume_updated_at = new Date();
+        }
+        
+        return await collection.updateOne(
+            { 
+                keyword: keyword,
+                category_id: categoryId
+            },
+            { 
+                $set: updateData
+            },
+            { upsert: true }
+        );
+    });
+}
+
+export async function removeKeyword500Pick(categoryId, keyword) {
+    return withRetry(async () => {
+        const client = await getMongoClient();
+        const db = client.db('insta09_database');
+        const collection = db.collection('gogoya_keyword_Gold');
+        
+        return await collection.updateOne(
+            { 
+                keyword: keyword,
+                category_id: categoryId
+            },
+            { 
+                $set: {
+                    status: 'none'
+                }
+            }
+        );
+    });
+}  

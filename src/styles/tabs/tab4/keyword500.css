@@ -9,7 +9,7 @@
     display: flex;
     gap: 20px;
     margin-top: 20px;
-    height: calc(100vh - 250px);
+    height: calc(100vh - 180px);
 }
 
 .keyword500-left-panel {
@@ -112,17 +112,14 @@
 
 .keyword-item.selected {
     background-color: #e3f2fd;
-    border-left: 3px solid #346aff;
 }
 
 .keyword-item.picked {
     background-color: #fff9c4;
-    border-left: 3px solid #ffd600;
 }
 
 .keyword-item.selected.picked {
     background-color: #fffde7;
-    border-left: 3px solid #ffd600;
 }
 
 .keyword-item:focus {
@@ -309,4 +306,97 @@
 
 .keyword-list-header .keyword-header {
     flex: 1;
+}
+
+.keyword-list-header .search-volume-header {
+    min-width: 100px;
+    text-align: center;
+}
+
+.search-volume-container {
+    min-width: 120px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 10px;
+}
+
+.search-volume-button {
+    padding: 4px 8px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    color: #495057;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    min-width: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.search-volume-count {
+    color: #1956ff;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.search-volume-date {
+    color: #495057;
+    font-size: 11px;
+    font-weight: 500;
+    opacity: 0;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    transition: opacity 0.2s ease;
+    background-color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.search-volume-date::before {
+    content: '조회일: ';
+    color: #495057;
+    font-weight: 500;
+}
+
+.search-volume-button:hover .search-volume-date {
+    opacity: 1;
+    bottom: calc(100% + 0px);
+    top: auto;
+    margin-top: 0;
+}
+
+.search-volume-button:hover .search-volume-date::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 4px;
+    border-style: solid;
+    border-color: #dee2e6 transparent transparent transparent;
+}
+
+.search-volume-button:hover:not(:disabled) {
+    background-color: #e9ecef;
+    border-color: #ced4da;
+}
+
+.search-volume-button:hover:not(:disabled) .search-volume-count {
+    color: #0c3bbb;
+}
+
+.search-volume-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
 } 
