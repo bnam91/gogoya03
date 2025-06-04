@@ -18,7 +18,6 @@ class ReleaseUpdater {
     async getLatestRelease() {
         try {
             const headers = {
-                'Authorization': `token ${this.token}`,
                 'Accept': 'application/vnd.github.v3+json'
             };
             
