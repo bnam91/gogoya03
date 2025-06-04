@@ -6,8 +6,9 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// .env 파일의 절대 경로 직접 지정
-const envPath = 'C:/Users/신현빈/Desktop/github/gogoya03/.env';
+// .env 파일의 상대 경로 지정
+const envPath = '../../../../../../.env';
+
 console.log('Loading .env from:', envPath);
 dotenv.config({ path: envPath });
 
