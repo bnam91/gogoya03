@@ -8,6 +8,9 @@ let groupedByBrand = {};
 let editedItems = {}; // 수정된 상품명을 저장할 객체
 let duplicatedBrands = new Set(); // 복제된 브랜드 목록을 저장할 Set
 
+// 파일 상단에 import 추가
+// import { searchContentByAuthorAndKeyword, highlightKeyword } from '../../classes/tab2/mongo_module/pastfeedSearch.js';
+
 export function initPage() {
     console.log('브랜드 매칭 페이지가 초기화되었습니다.');
     
@@ -78,6 +81,141 @@ export function initPage() {
                 </div>
             </div>
         `;
+
+        // brand-list 컨테이너 다음에 키워드 검색 컨테이너 추가
+        const brandListContainer = leftContent.querySelector('#brand-list');
+        brandListContainer.insertAdjacentHTML('afterend', `
+            <div id="keyword-search-list" class="list-container" style="background-color: #fff; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; margin-top: 1rem;">
+                <div class="list-header" style="padding: 0.75rem; background-color: #f3f4f6; border-bottom: 1px solid #e5e7eb; font-weight: 500;">
+                    <span>키워드 검색</span>
+                </div>
+                <div class="keyword-search-input" style="padding: 1rem;">
+                    <div class="input-group" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                        <input 
+                            type="text" 
+                            id="keyword-search-input" 
+                            class="form-input" 
+                            placeholder="검색할 키워드 입력"
+                            style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;"
+                        >
+                        <button 
+                            id="keyword-search-btn" 
+                            class="btn btn-primary"
+                            style="padding: 0.5rem 1rem; background-color: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer;"
+                        >검색</button>
+                    </div>
+                    <div id="keyword-search-results" style="max-height: 1000px; overflow-y: auto;">
+                        <!-- 검색 결과가 여기에 표시됩니다 -->
+                    </div>
+                </div>
+            </div>
+        `);
+
+        // 키워드 검색 이벤트 리스너 추가
+        const keywordSearchBtn = document.getElementById('keyword-search-btn');
+        const keywordSearchInput = document.getElementById('keyword-search-input');
+        const keywordSearchResults = document.getElementById('keyword-search-results');
+
+        // 키워드 하이라이트 함수 추가
+        function highlightKeyword(text, keyword) {
+            if (!text || !keyword) {
+                return text;
+            }
+            
+            const startIdx = text.toLowerCase().indexOf(keyword.toLowerCase());
+            if (startIdx === -1) {
+                return text;
+            }
+            
+            const contextStart = Math.max(0, startIdx - 50);
+            const contextEnd = Math.min(text.length, startIdx + keyword.length + 50);
+            
+            let context = text.slice(contextStart, contextEnd);
+            
+            const highlighted = context.replace(
+                text.slice(startIdx, startIdx + keyword.length),
+                `<span style="background-color: #FFEB3B; padding: 0 2px; border-radius: 2px;">${text.slice(startIdx, startIdx + keyword.length)}</span>`
+            );
+            
+            let result = highlighted;
+            if (contextStart > 0) {
+                result = "..." + result;
+            }
+            if (contextEnd < text.length) {
+                result = result + "...";
+            }
+            
+            return result;
+        }
+
+        keywordSearchBtn.addEventListener('click', async () => {
+            const keyword = keywordSearchInput.value.trim();
+            if (!keyword) {
+                alert('검색할 키워드를 입력해주세요.');
+                return;
+            }
+
+            // 현재 선택된 인플루언서의 clean_name 가져오기
+            const influencerDetail = document.querySelector('.influencer-detail');
+            const influencerName = influencerDetail ? 
+                influencerDetail.querySelector('.detail-section div:nth-child(2) div:nth-child(1) div').textContent.split('(')[0].trim() : 
+                '';
+
+            if (!influencerName) {
+                alert('먼저 인플루언서를 검색해주세요.');
+                return;
+            }
+
+            try {
+                // 로딩 표시
+                keywordSearchResults.innerHTML = '<div style="text-align: center; padding: 1rem;">검색 중...</div>';
+
+                // 키워드로 게시물 검색 (새로운 API 사용)
+                const results = await window.api.searchContentByKeyword(influencerName, keyword);
+
+                if (results.length === 0) {
+                    keywordSearchResults.innerHTML = '<div style="text-align: center; padding: 1rem; color: #666;">검색 결과가 없습니다.</div>';
+                    return;
+                }
+
+                // 검색 결과 표시
+                const sortedResults = results.sort((a, b) => new Date(b.cr_at) - new Date(a.cr_at));
+                keywordSearchResults.innerHTML = sortedResults.map(result => `
+                    <div class="search-result-item" style="padding: 1rem; border-bottom: 1px solid #e5e7eb;">
+                        <div style="font-size: 0.875rem; color: #666; margin-bottom: 0.5rem;">
+                            <span style="margin-right: 1rem;">브랜드: ${result['09_brand'] || '정보 없음'}</span>
+                            <span>아이템: ${result['09_item'] || '정보 없음'}</span>
+                        </div>
+                        <div style="font-size: 0.875rem; margin-bottom: 0.5rem; padding: 0.75rem; background-color: #f1f5f9; border-radius: 4px; line-height: 1.5;">
+                            ${highlightKeyword(result.content || '내용 없음', keyword)}
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.875rem; color: #666;">
+                            <div>
+                                작성일: ${new Date(result.cr_at).toLocaleDateString()}
+                            </div>
+                            <a href="${result.post_url}" target="_blank" style="color: #2563eb; text-decoration: none;">
+                                게시물 바로가기
+                                <svg style="display: inline; margin-left: 4px;" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                    <polyline points="15 3 21 3 21 9"></polyline>
+                                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                                </svg>
+                            </a>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('키워드 검색 중 오류 발생:', error);
+                keywordSearchResults.innerHTML = '<div style="text-align: center; padding: 1rem; color: #dc2626;">검색 중 오류가 발생했습니다.</div>';
+            }
+        });
+
+        // Enter 키로 검색 가능하도록 설정
+        keywordSearchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                keywordSearchBtn.click();
+            }
+        });
 
         // 조회 버튼 이벤트 리스너 추가
         const searchBtn = leftContent.querySelector('#search-influencer-btn');

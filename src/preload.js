@@ -42,7 +42,8 @@ contextBridge.exposeInMainWorld('api', {
   removeKeyword500Pick: (categoryId, keyword) => ipcRenderer.invoke('remove-keyword500-pick', { categoryId, keyword }),
   updateKeyword500Status: (data) => ipcRenderer.invoke('update-keyword500-status', data),
   getBrandWebsiteUrl: (brandName) => ipcRenderer.invoke('get-brand-website-url', brandName),
-  openExternalLink: (url) => ipcRenderer.invoke('open-external-link', url)
+  openExternalLink: (url) => ipcRenderer.invoke('open-external-link', url),
+  searchContentByKeyword: (username, keyword) => ipcRenderer.invoke('search-content-by-keyword', { username, keyword }),
 });
 
 contextBridge.exposeInMainWorld('googleSheetApi', {

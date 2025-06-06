@@ -1290,6 +1290,47 @@ ipcMain.handle('open-external-link', async (event, url) => {
     }
 });
 
+// 키워드 검색 IPC 핸들러 추가
+ipcMain.handle('search-content-by-keyword', async (event, { username, keyword }) => {
+    try {
+        const client = await getMongoClient();
+        const db = client.db('insta09_database');
+        const influencerCollection = db.collection('02_main_influencer_data');
+        const feedCollection = db.collection('01_main_newfeed_crawl_data');
+
+        // username으로 검색
+        let influencer = await influencerCollection.findOne({ username: username });
+        if (!influencer) {
+            // clean_name으로 검색
+            influencer = await influencerCollection.findOne({ clean_name: username });
+        }
+
+        if (!influencer) {
+            return [];
+        }
+
+        const query = {
+            author: influencer.username,
+            content: { $regex: keyword, $options: 'i' }
+        };
+
+        const projection = {
+            post_url: 1,
+            cr_at: 1,
+            content: 1,
+            '09_brand': 1,
+            '09_item': 1,
+            _id: 0
+        };
+
+        const results = await feedCollection.find(query, { projection }).toArray();
+        return results;
+    } catch (error) {
+        console.error('키워드 검색 중 오류 발생:', error);
+        throw error;
+    }
+});
+
 // ===========================================
 // Electron 앱 윈도우 생성
 // ===========================================
