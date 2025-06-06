@@ -167,6 +167,21 @@ ipcMain.handle('update-nextstep-request', async (event, brandName, newStatus) =>
     }
 });
 
+// 브랜드 정보 생성 핸들러
+ipcMain.handle('create-brand-info', async (event, brandData) => {
+    try {
+        const client = await getMongoClient();
+        const db = client.db(config.database.name);
+        const collection = db.collection(config.database.collections.vendorBrandInfo);
+        
+        const result = await collection.insertOne(brandData);
+        return result;
+    } catch (error) {
+        console.error('브랜드 정보 생성 중 오류:', error);
+        throw error;
+    }
+});
+
 // 셀러매칭 탭 인플루언서 데이터 조회
 ipcMain.handle('fetch-influencer-data-for-seller-match', async () => {
     try {

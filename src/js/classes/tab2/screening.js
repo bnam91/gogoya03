@@ -106,8 +106,30 @@ export class ScreeningManager {
             const verificationStatus = isSelected ? "pick" : "yet";
             console.log('verificationStatus : ', verificationStatus);
             const result = await window.api.updateBrandVerification(brandName, verificationStatus);
+            
             if (result.matchedCount === 0) {
-                console.log(`브랜드 '${brandName}'에 대한 정보를 찾을 수 없습니다.`);
+                // 브랜드가 없는 경우 새로 생성
+                console.log(`브랜드 '${brandName}'를 새로 생성합니다.`);
+                const createResult = await window.api.createBrandInfo({
+                    brand_name: brandName,
+                    name: brandName,  // brand_name과 동일한 값으로 설정
+                    company_name: "",
+                    customer_service_number: "",
+                    business_address: "",
+                    email: "",
+                    sourcing_status: "",
+                    official_website_url: "",
+                    verification_status: "",
+                    is_verified: "pick",  // is_verified 필드 추가
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                });
+                
+                if (createResult.insertedId) {
+                    console.log(`브랜드 '${brandName}'가 성공적으로 생성되었습니다.`);
+                } else {
+                    console.error(`브랜드 '${brandName}' 생성에 실패했습니다.`);
+                }
             } else {
                 console.log(`브랜드 '${brandName}'의 검증 상태가 '${verificationStatus}'로 업데이트되었습니다.`);
             }
