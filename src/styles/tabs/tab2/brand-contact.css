@@ -421,6 +421,13 @@
     cursor: pointer;
     transition: background-color 0.3s;
     font-size: 0.95em;
+    white-space: nowrap;
+    min-width: 80px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
 }
 
 .call-button:hover {
@@ -991,10 +998,23 @@
     padding: 4px 8px;
     border-radius: 4px;
     transition: background-color 0.2s;
+    display: inline-block;
+    width: 100%;
 }
 
 .info-item span.editable:hover {
     background-color: #f0f0f0;
+}
+
+.info-item span.editable a {
+    display: block;
+    width: 100%;
+    text-decoration: none;
+    color: #007bff;
+}
+
+.info-item span.editable a:hover {
+    text-decoration: underline;
 }
 
 .info-item span.edited {

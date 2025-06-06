@@ -434,9 +434,11 @@ async function updateBrandInfoPanel(item) {
                             </div>
                             <div class="info-item">
                                 <label>실제 도메인</label>
-                                <a href="${brandPhoneData.actual_domain_url}" class="link">
-                                    ${brandPhoneData.actual_domain_url || '-'}
-                                </a>
+                                <span class="editable" data-field="actual_domain_url">
+                                    <a href="${brandPhoneData.actual_domain_url}" class="link" target="_blank">
+                                        ${brandPhoneData.actual_domain_url || '-'}
+                                    </a>
+                                </span>
                             </div>
                             <div class="info-item">
                                 <label>검색 URL</label>
@@ -554,6 +556,105 @@ async function updateBrandInfoPanel(item) {
                 }
             });
         }
+
+        // 편집 가능한 필드에 이벤트 리스너 추가
+        const editableFields = rightPanel.querySelectorAll('.editable');
+        editableFields.forEach(field => {
+            field.addEventListener('click', async (e) => {
+                // 링크 클릭 시 편집 모드로 전환하지 않음
+                if (e.target.tagName === 'A') {
+                    return;
+                }
+
+                const fieldName = field.dataset.field;
+                const currentValue = field.textContent.trim();
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = currentValue;
+                input.className = 'edit-input';
+
+                // 실제 도메인 필드인 경우 특별 처리
+                if (fieldName === 'actual_domain_url') {
+                    const link = field.querySelector('a');
+                    if (link) {
+                        input.value = link.href;
+                    }
+                }
+
+                field.innerHTML = '';
+                field.appendChild(input);
+                input.focus();
+
+                const handleBlur = async () => {
+                    const newValue = input.value.trim();
+                    if (newValue !== currentValue) {
+                        try {
+                            // MongoDB 업데이트
+                            await window.api.updateBrandInfo(brandPhoneData.brand_name, {
+                                [fieldName]: newValue
+                            });
+
+                            // UI 업데이트
+                            if (fieldName === 'actual_domain_url') {
+                                field.innerHTML = `
+                                    <a href="${newValue}" class="link" target="_blank">
+                                        ${newValue || '-'}
+                                    </a>
+                                `;
+                            } else {
+                                field.textContent = newValue || '-';
+                            }
+
+                            // 성공 메시지 표시
+                            const toast = document.createElement('div');
+                            toast.className = 'toast-message success';
+                            toast.innerHTML = `
+                                <span class="toast-icon">✓</span>
+                                <span class="toast-text">정보가 업데이트되었습니다.</span>
+                            `;
+                            document.body.appendChild(toast);
+
+                            setTimeout(() => {
+                                toast.classList.add('fade-out');
+                                setTimeout(() => toast.remove(), 300);
+                            }, 3000);
+
+                        } catch (error) {
+                            console.error('정보 업데이트 중 오류:', error);
+                            alert('정보 업데이트 중 오류가 발생했습니다.');
+                            // 오류 발생 시 원래 값으로 복원
+                            if (fieldName === 'actual_domain_url') {
+                                field.innerHTML = `
+                                    <a href="${currentValue}" class="link" target="_blank">
+                                        ${currentValue || '-'}
+                                    </a>
+                                `;
+                            } else {
+                                field.textContent = currentValue || '-';
+                            }
+                        }
+                    } else {
+                        // 값이 변경되지 않은 경우 원래 상태로 복원
+                        if (fieldName === 'actual_domain_url') {
+                            field.innerHTML = `
+                                <a href="${currentValue}" class="link" target="_blank">
+                                    ${currentValue || '-'}
+                                </a>
+                            `;
+                        } else {
+                            field.textContent = currentValue || '-';
+                        }
+                    }
+                };
+
+                input.addEventListener('blur', handleBlur);
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        input.blur();
+                    }
+                });
+            });
+        });
 
     } catch (error) {
         console.error('브랜드 정보 로드 중 오류:', error);
