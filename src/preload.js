@@ -42,6 +42,8 @@ contextBridge.exposeInMainWorld('api', {
   removeKeyword500Pick: (categoryId, keyword) => ipcRenderer.invoke('remove-keyword500-pick', { categoryId, keyword }),
   updateKeyword500Status: (data) => ipcRenderer.invoke('update-keyword500-status', data),
   getBrandWebsiteUrl: (brandName) => ipcRenderer.invoke('get-brand-website-url', brandName),
+  openExternalLink: (url) => ipcRenderer.invoke('open-external-link', url),
+  searchContentByKeyword: (username, keyword) => ipcRenderer.invoke('search-content-by-keyword', { username, keyword }),
   openNewWindow: (pagePath) => ipcRenderer.invoke('open-new-window', pagePath),
   createBrandInfo: (brandData) => ipcRenderer.invoke('create-brand-info', brandData)
 });
