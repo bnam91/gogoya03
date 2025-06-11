@@ -36,7 +36,9 @@ function initEventListeners() {
 
             // 검색, 트렌드, 키워드 통계를 병렬로 가져오기
             const [searchResult, trendResult, keywordStats] = await Promise.all([
-                window.coupangAPI.search(searchQuery),
+                window.coupangAPI.search(searchQuery, {
+                    selector: 'li[data-sentry-component="ProductItem"]'
+                }),
                 window.coupangAPI.getTrend(searchQuery),
                 window.coupangAPI.getKeywordStats(keywordForNaverAPI) // 띄어쓰기 제거된 키워드 사용
             ]);
