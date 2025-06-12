@@ -11,7 +11,7 @@ class ReleaseUpdater {
         this.owner = owner;
         this.repo = repo;
         this.versionFile = versionFile;
-        this.apiUrl = `https://api.github.com/repos/${owner}/${repo}/releases/latest`; 
+        // this.apiUrl = `https://api.github.com/repos/${owner}/${repo}/releases/latest`; 
         // --개발용
         this.token = process.env.GITHUB_TOKEN;
     }
