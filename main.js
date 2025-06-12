@@ -481,11 +481,7 @@ ipcMain.handle('fetch-screening-data', async () => {
     const db = client.db(config.database.name);
     const collection = db.collection(config.database.collections.mainItemTodayData);
 
-    const twentyDaysAgo = new Date();
-    twentyDaysAgo.setDate(twentyDaysAgo.getDate() - 20);
-
     const data = await collection.find({
-        crawl_date: { $gte: twentyDaysAgo },
         brand: { $ne: '확인필요' }
     })
         .sort({ crawl_date: -1 })
@@ -930,7 +926,7 @@ ipcMain.handle('search-coupang', async (event, searchQuery) => {
 
         const searchUrl = `https://www.coupang.com/np/search?q=${encodeURIComponent(searchQuery)}&channel=user`;
         await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
-        await page.waitForSelector('li.search-product', { timeout: 10000 });
+        await page.waitForSelector('li[data-sentry-component="ProductItem"]', { timeout: 10000 });
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         // 상품 정보 크롤링
@@ -941,29 +937,29 @@ ipcMain.handle('search-coupang', async (event, searchQuery) => {
             const timeSaleSection = document.querySelector('.sdw-aging-carousel-widget');
             if (timeSaleSection) timeSaleSection.remove();
             
-            const items = document.querySelectorAll('li.search-product:not(.best-seller-carousel-item):not(.sdw-aging-carousel-item)');
+            const items = document.querySelectorAll('li[data-sentry-component="ProductItem"]');
             
             return Array.from(items).map((item, index) => {
-                const name = item.querySelector('.name')?.textContent.trim() || '';
-                const price = item.querySelector('.price-value')?.textContent.trim() || '';
-                const rating = item.querySelector('.rating')?.style.width || '0%';
-                const reviewCount = item.querySelector('.rating-total-count')?.textContent.replace(/[()]/g, '') || '0';
-                const imageUrl = item.querySelector('img.search-product-wrap-img')?.src || '';
-                const productLink = item.querySelector('a.search-product-link')?.href || '';
-                const isAd = item.querySelector('.ad-badge') !== null;
+                const name = item.querySelector('.ProductUnit_productName__gre7e')?.textContent.trim() || '';
+                const price = item.querySelector('.PriceInfo_priceValue__A4KOr')?.textContent.trim() || '';
+                const rating = item.querySelector('.ProductRating_star__RGSlV')?.style.width || '0%';
+                const reviewCount = item.querySelector('.ProductRating_ratingCount__R0Vhz')?.textContent.replace(/[()]/g, '') || '0';
+                const imageUrl = item.querySelector('img[data-sentry-element="Image"]')?.src || '';
+                const productLink = item.querySelector('a[data-sentry-element="AdLink"]')?.href || '';
+                const isAd = item.querySelector('.AdMark_adMark__KPMsC') !== null;
                 
-                const rocketBadge = item.querySelector('.badge.rocket');
+                const rocketBadge = item.querySelector('.ImageBadge_default__JWaYp');
                 const rocketDelivery = rocketBadge ? true : false;
                 const rocketType = rocketBadge ? 
                     (rocketBadge.querySelector('img')?.src.includes('logo_rocket') ? '로켓배송' : 
                      rocketBadge.querySelector('img')?.src.includes('logoRocketMerchant') ? '판매자로켓' : '일반배송') : '일반배송';
                 
-                const isRocketGlobal = item.querySelector('.badge.global') !== null;
+                const isRocketGlobal = item.querySelector('.DeliveryInfo_delivery__c7z4P')?.textContent.includes('직구') || false;
                 const deliveryType = isRocketGlobal ? '로켓직구' : rocketType;
                 const isRocket = isRocketGlobal ? false : rocketDelivery;
                 
-                const productId = item.getAttribute('data-product-id') || '';
-                const vendorItemId = item.getAttribute('data-vendor-item-id') || '';
+                const productId = item.getAttribute('data-id') || '';
+                const vendorItemId = item.getAttribute('data-id') || '';
                 
                 return {
                     productId,

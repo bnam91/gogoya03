@@ -9,6 +9,7 @@ export class ScreeningManager {
         this.selectedCategories = [];
         this.selectedViews = null;
         this.selectedPickStatus= null;
+        this.selectedPeriod = 'all'; // 기간 선택 필터 추가
         this.data = [];
         this.filteredData = [];
         this.categories = [
@@ -29,7 +30,6 @@ export class ScreeningManager {
 
     init = async () => {
         console.log("스크리닝 초기화 시작");
-        //console.log("MongoDB 객체:", this.mongo);
         try {
             console.log("요소들 렌더링 시작");
             this.viewMode = 'brand';
@@ -38,13 +38,11 @@ export class ScreeningManager {
             <div id="screening-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
             <div id="scroll-sentinel" style="height: 1px;"></div>
             `;
-            await this.loadScreeningData();
             this.setupEventListeners();
             this.setupViewModeButtons();
             this.setupFilters();
         } catch (error) {
             console.error("스크리닝 초기화 중 오류:", error);
-            this.loadFallbackData();
         }
     }
 
@@ -224,6 +222,34 @@ export class ScreeningManager {
             });
         }
 
+        // 기간 선택 필터
+        const periodFilter = document.getElementById('period-filter');
+        const periodSelect = periodFilter.querySelector('.filter-select');
+        const periodOptions = periodFilter.querySelector('.filter-options');
+        const periodRadios = periodFilter.querySelectorAll('.filter-option input[type="radio"]');
+
+        if (periodSelect) {
+            // 드롭다운 토글
+            periodSelect.addEventListener('click', () => {
+                periodOptions.classList.toggle('show');
+            });
+
+            // 라디오 버튼 변경 이벤트
+            periodRadios.forEach(radio => {
+                radio.addEventListener('change', () => {
+                    this.selectedPeriod = radio.value;
+                    const selectedPeriod = periodSelect.querySelector('.selected-items');
+                    if (selectedPeriod) {
+                        let displayText = '전체';
+                        if (radio.value === '7days') displayText = '7일 이내';
+                        else if (radio.value === '15days') displayText = '15일 이내';
+                        else if (radio.value === '30days') displayText = '30일 이내';
+                        selectedPeriod.textContent = displayText;
+                    }
+                });
+            });
+        }
+
         // 필터 적용 버튼
         const applyButton = document.getElementById('screening-apply');
         if (applyButton) {
@@ -320,11 +346,37 @@ export class ScreeningManager {
         document.body.appendChild(toast);
 
         try {
+            // 데이터가 없을 때만 로드
+            if (this.data.length === 0) {
+                const data = await window.api.fetchScreeningData();
+                console.log("로드된 데이터 수:", data.length);
+                if (data.length > 0) {
+                    this.data = data;
+                } else {
+                    console.log("데이터가 없습니다.");
+                    this.loadFallbackData();
+                }
+            }
+
             const allBrands = [...new Set(this.data.map(item => item.brand))];
             const map = await window.api.fetchBrandVerificationStatus(allBrands);
             this.brandVerificationMap = map;
 
             let result = this.data;
+
+            // 기간 필터
+            if (this.selectedPeriod === '7days' || this.selectedPeriod === '15days' || this.selectedPeriod === '30days') {
+                console.log(`${this.selectedPeriod} 필터 적용`);
+                const daysAgo = new Date();
+                const days = this.selectedPeriod === '7days' ? 7 : 
+                           this.selectedPeriod === '15days' ? 15 : 30;
+                daysAgo.setDate(daysAgo.getDate() - days);
+                
+                result = result.filter(item => {
+                    const itemDate = new Date(item.crawl_date);
+                    return itemDate >= daysAgo;
+                });
+            }
 
             // 카테고리 필터
             if (this.selectedCategories.length > 0) {
@@ -466,6 +518,7 @@ export class ScreeningManager {
             this.selectedCategories = [];
             this.selectedViews = null;
             this.selectedPickStatus = null;
+            this.selectedPeriod = 'all';
             this.searchTerm = '';
 
             // 디스플레이 텍스트 초기화
@@ -725,23 +778,31 @@ export class ScreeningManager {
         const brandVerificationMap = await window.api.fetchBrandVerificationStatus(allBrands);
 
         const brandList = Object.entries(groupedByBrand).map(([brand, items]) => {
-            const enrichedItems = items.map(item => {
+            const enrichedItems = items
+                .sort((a, b) => new Date(b.crawl_date) - new Date(a.crawl_date))  // 날짜순 정렬
+                .map(item => {
                 const cleanName = item.clean_name || item.author;
-                const influencer = influencerMap.get(cleanName);
+                    const data = influencerMap.get(cleanName) || {};
+
                 return {
                     ...item,
-                    reelsViews: influencer ? influencer["reels_views(15)"] || 0 : 0,
-                    grade: influencer ? influencer.grade || 'N/A' : 'N/A',
-                    isVerifiedBrand: brandVerificationMap.get(brand) === "pick"
+                        cleanName,
+                        reelsViews: data["reels_views(15)"] || 0,
+                        grade: data.grade || 'N/A',
+                        isVerifiedBrand: brandVerificationMap.get(item.brand) === "pick"
                 };
             });
 
             return {
                 brand,
                 items: enrichedItems,
-                isVerifiedBrand: brandVerificationMap.get(brand) === "pick"
+                isVerifiedBrand: brandVerificationMap.get(brand) === "pick",
+                itemCount: enrichedItems.length  // 게시물 수 추가
             };
         });
+
+        // 게시물 수 기준으로 내림차순 정렬
+        brandList.sort((a, b) => b.itemCount - a.itemCount);
 
         return brandList;
     };
@@ -926,40 +987,31 @@ export class ScreeningManager {
             // 브랜드 검증 정보 일괄 로드
             const allBrands = [...new Set(Object.values(groupedByInfluencer).flat().map(item => item.brand))];
             const brandVerificationMap = await window.api.fetchBrandVerificationStatus(allBrands);
-            console.log('brandVerificationMap', brandVerificationMap);
-            console.log('brandVerificationMap type:', typeof brandVerificationMap);
-            console.log('brandVerificationMap keys:', Object.keys(brandVerificationMap));
-            console.log('brandVerificationMap entries:', Object.entries(brandVerificationMap));
-
-            console.log('brandVerificationMap.get(쏘랩)', brandVerificationMap.get("쏘랩"));
-            console.log('brandVerificationMap.get(켄트로얄)', brandVerificationMap.get("켄트로얄"));
 
             // 인플루언서별로 정리
             const sortedInfluencers = Object.entries(groupedByInfluencer).map(([influencer, items]) => {
-                const enrichedItems = items.map(item => {
+                // items를 날짜순으로 정렬
+                const sortedItems = items.sort((a, b) => new Date(b.crawl_date) - new Date(a.crawl_date));
+                
+                const enrichedItems = sortedItems.map(item => {
                     const cleanName = item.clean_name || item.author;
                     const data = influencerDataMap.get(cleanName) || {};
 
-                    if (cleanName === '꿀양') {
-                        console.log('cleanName:', cleanName)
-                        console.log('item.brand:', item.brand);
-                        console.log('isVerifiedBrand:', brandVerificationMap.get(item.brand));
-                    }
                     return {
                         ...item,
                         cleanName,
                         reelsViews: data["reels_views(15)"] || 0,
                         grade: data.grade || 'N/A',
-                        isVerifiedBrand: brandVerificationMap.get(item.brand) === "pick" // Map.get() 사용
+                        isVerifiedBrand: brandVerificationMap.get(item.brand) === "pick"
                     };
                 });
 
                 return {
-                    influencer,                           // 인플루언서명 (author)
+                    influencer,
                     cleanName: enrichedItems[0]?.cleanName || influencer,
                     reelsViews: enrichedItems[0]?.reelsViews || 0,
                     grade: enrichedItems[0]?.grade || 'N/A',
-                    items: enrichedItems                  // products 목록
+                    items: enrichedItems
                 };
             });
 
