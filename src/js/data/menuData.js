@@ -23,7 +23,8 @@ export const menuData = [
         { title: "셀러매칭", page: "tab2/seller-match" },
         { title: "브랜드 매칭", page: "tab2/brand-match" },
         { title: "캠페인 관리", page: "tab2/campaign-manage" },
-        { title: "셀러분석", page: "tab2/seller-analysis" }
+        { title: "셀러분석", page: "tab2/seller-analysis" },
+        { title: "키워드 검색", page: "tab2/keyword-search" }
       ]
     },
     {
