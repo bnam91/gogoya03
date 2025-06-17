@@ -407,16 +407,17 @@ ipcMain.handle('upload-influencer-data', async (event, payload) => {
 // 인플루언서 정보 조회 IPC 핸들러
 ipcMain.handle('get-influencer-info', async (event, username) => {
     try {
-        const db = await getMongoClient();
-        const collection = db.db(config.database.name).collection(config.database.collections.influencerData);
+        const client = await getMongoClient();
+        const db = client.db('insta09_database');
+        const collection = db.collection('02_main_influencer_data');
 
         const influencer = await collection.findOne(
             { username: username },
-            { projection: { memo: 1, username: 1, clean_name: 1 } }
+            { projection: { username: 1, clean_name: 1, followers: 1, "reels_views(15)": 1 } }
         );
 
         if (!influencer) {
-            throw new Error('인플루언서를 찾을 수 없습니다.');
+            return null;
         }
 
         return influencer;
@@ -1546,39 +1547,19 @@ ipcMain.handle('open-external-link', async (event, url) => {
 });
 
 // 키워드 검색 IPC 핸들러 추가
-ipcMain.handle('search-content-by-keyword', async (event, { username, keyword }) => {
+ipcMain.handle('search-content-by-keyword', async (event, keyword) => {
     try {
+        console.log('키워드 검색 시작:', keyword); // 디버깅을 위한 로그 추가
         const client = await getMongoClient();
-        const db = client.db('insta09_database');
-        const influencerCollection = db.collection('02_main_influencer_data');
-        const feedCollection = db.collection('01_main_newfeed_crawl_data');
+        const db = client.db(config.database.name);
+        const collection = db.collection('01_main_newfeed_crawl_data');
 
-        // username으로 검색
-        let influencer = await influencerCollection.findOne({ username: username });
-        if (!influencer) {
-            // clean_name으로 검색
-            influencer = await influencerCollection.findOne({ clean_name: username });
-        }
-
-        if (!influencer) {
-            return [];
-        }
-
-        const query = {
-            author: influencer.username,
+        // 키워드로 게시물 검색 (대소문자 구분 없이)
+        const results = await collection.find({
             content: { $regex: keyword, $options: 'i' }
-        };
+        }).toArray();
 
-        const projection = {
-            post_url: 1,
-            cr_at: 1,
-            content: 1,
-            '09_brand': 1,
-            '09_item': 1,
-            _id: 0
-        };
-
-        const results = await feedCollection.find(query, { projection }).toArray();
+        console.log('검색 결과 수:', results.length); // 디버깅을 위한 로그 추가
         return results;
     } catch (error) {
         console.error('키워드 검색 중 오류 발생:', error);
