@@ -1,12 +1,15 @@
 /**
  * 쿠팡 페이지 관리를 위한 JavaScript 모듈
  */
+import { CoupangCrawlingModule, getDeliveryBadgeClass } from '../../classes/tab4/coupangCrawlingModule.js';
+
 export function initPage() {
     console.log('쿠팡 페이지 초기화');
     initEventListeners();
 }
 
-let currentProducts = []; // 현재 검색 결과 저장
+// 쿠팡 크롤링 모듈 인스턴스
+const coupangCrawlingModule = new CoupangCrawlingModule();
 
 function initEventListeners() {
     const searchInput = document.getElementById('coupang-search-input');
@@ -23,6 +26,9 @@ function initEventListeners() {
             return;
         }
 
+        // 체크박스 상태 확인
+        const includeCrawling = document.getElementById('coupang-crawl-option').checked;
+
         try {
             // 로딩 표시
             loadingIndicator.style.display = 'block';
@@ -34,23 +40,50 @@ function initEventListeners() {
             // 네이버 검색광고 API용 키워드 (띄어쓰기 제거)
             const keywordForNaverAPI = searchQuery.replace(/\s+/g, '');
 
-            // 검색, 트렌드, 키워드 통계를 병렬로 가져오기
-            const [searchResult, trendResult, keywordStats] = await Promise.all([
-                window.coupangAPI.search(searchQuery, {
-                    selector: 'li[data-sentry-component="ProductItem"]'
-                }),
-                window.coupangAPI.getTrend(searchQuery),
-                window.coupangAPI.getKeywordStats(keywordForNaverAPI) // 띄어쓰기 제거된 키워드 사용
-            ]);
+            if (includeCrawling) {
+                // 쿠팡 크롤링 모듈을 사용하여 검색 및 통계 분석
+                const result = await coupangCrawlingModule.executeCrawling(searchQuery);
+                
+                displaySearchResults({ products: result.products, stats: result.stats });
+                filterContainer.style.display = 'block';
+                await displayTrendCharts(searchQuery);
+                displayKeywordStats(result.keywordStats, searchQuery);
+            } else {
+                // 쿠팡 크롤링 및 통계 작업 제외, 네이버 기능만 실행
+                console.log('쿠팡 크롤링 및 통계 작업을 제외하고 네이버 기능만 실행합니다.');
+                
+                // 네이버 트렌드와 키워드 통계만 가져오기
+                const [trendResult, keywordStats] = await Promise.all([
+                    window.coupangAPI.getTrend(searchQuery),
+                    window.coupangAPI.getKeywordStats(keywordForNaverAPI)
+                ]);
 
-            currentProducts = searchResult.products;
-            console.log('검색 결과 상품 목록:', currentProducts);
-            const initialStats = calculateStats(currentProducts);
-            console.log('초기 통계 계산 결과:', initialStats);
-            displaySearchResults({ products: currentProducts, stats: initialStats });
-            filterContainer.style.display = 'block';
-            await displayTrendCharts(searchQuery);
-            displayKeywordStats(keywordStats, searchQuery); // 원본 검색어 전달 (표시용)
+                // 검색 결과만 표시 (빈 결과)
+                const emptyStats = {
+                    rocketDeliveryPercentage: '0.0',
+                    averagePrice: 0,
+                    adStats: { 광고: 0, 일반: 0 },
+                    deliveryStats: {},
+                    lowReviewCount: 0,
+                    lowReviewPercentage: '0.0'
+                };
+                
+                displaySearchResults({ products: [], stats: emptyStats });
+                
+                // 크롤링을 하지 않는다는 메시지 표시
+                searchResults.innerHTML = `
+                    <div class="placeholder-message">
+                        <h3>검색 완료</h3>
+                        <p>검색어: <strong>${searchQuery}</strong></p>
+                        <p>쿠팡 상품 크롤링 및 통계 분석이 비활성화되어 있습니다.</p>
+                        <p>상품 정보를 확인하려면 위의 체크박스를 활성화하고 다시 검색해주세요.</p>
+                    </div>
+                `;
+
+                // 네이버 기능들 실행
+                await displayTrendCharts(searchQuery);
+                displayKeywordStats(keywordStats, searchQuery);
+            }
 
         } catch (error) {
             console.error('검색 중 오류 발생:', error);
@@ -85,115 +118,16 @@ function initEventListeners() {
 
 function filterProducts(filterType) {
     console.log('filterProducts 시작 - 필터 타입:', filterType);
-    console.log('현재 상품 목록:', currentProducts);
     
-    let filteredProducts = [...currentProducts];
-
-    switch (filterType) {
-        case 'rocket':
-            filteredProducts = currentProducts.filter(product => 
-                product.deliveryType.type === '로켓배송' || 
-                product.deliveryType.type === '판매자로켓'
-            );
-            break;
-        case 'ad':
-            filteredProducts = currentProducts.filter(product => product.isAd);
-            break;
-        // 'all'인 경우 필터링하지 않음
-    }
-
+    // 쿠팡 크롤링 모듈을 사용하여 필터링
+    const filteredProducts = coupangCrawlingModule.filterProducts(filterType);
     console.log('필터링된 상품 목록:', filteredProducts);
 
     // 필터링된 결과로 통계 재계산
-    const stats = calculateStats(filteredProducts);
+    const stats = coupangCrawlingModule.calculateStats(filteredProducts);
     console.log('계산된 통계:', stats);
 
     displaySearchResults({ products: filteredProducts, stats });
-}
-
-function calculateStats(products) {
-    console.log('calculateStats 입력 데이터:', products);
-    console.log('products 길이:', products?.length);
-
-    if (!products || products.length === 0) {
-        console.log('products가 비어있음');
-        return {
-            rocketDeliveryPercentage: '0.0',
-            averagePrice: 0,
-            adStats: { 광고: 0, 일반: 0 },
-            deliveryStats: {},
-            lowReviewCount: 0,
-            lowReviewPercentage: '0.0'
-        };
-    }
-
-    const deliveryStats = products.reduce((acc, product) => {
-        acc[product.deliveryType.type] = (acc[product.deliveryType.type] || 0) + 1;
-        return acc;
-    }, {});
-
-    const rocketDeliveryCount = (deliveryStats['로켓배송'] || 0) + (deliveryStats['판매자로켓'] || 0);
-    const totalCount = products.length - (deliveryStats['로켓직구'] || 0);
-    const rocketDeliveryPercentage = totalCount > 0 ? ((rocketDeliveryCount / totalCount) * 100).toFixed(1) : '0.0';
-
-    const adStats = products.reduce((acc, product) => {
-        acc[product.isAd ? '광고' : '일반'] = (acc[product.isAd ? '광고' : '일반'] || 0) + 1;
-        return acc;
-    }, {});
-
-    const prices = products
-        .map(product => product.priceValue)
-        .filter(price => !isNaN(price))
-        .sort((a, b) => a - b);
-
-    const filteredPrices = prices.slice(5, -5);
-    const averagePrice = filteredPrices.length > 0 
-        ? Math.round(filteredPrices.reduce((sum, price) => sum + price, 0) / filteredPrices.length)
-        : 0;
-
-    // 상위 12개 상품의 리뷰 수 분석
-    const top12Products = products.slice(0, Math.min(12, products.length));
-    console.log('상위 12개 상품:', top12Products);
-    console.log('각 상품의 리뷰 수:', top12Products.map(p => p.reviewCount));
-
-    const lowReviewProducts = top12Products.filter(product => {
-        console.log('상품 리뷰 수 확인:', product.name, product.reviewCount);
-        return product.reviewCount !== undefined && product.reviewCount < 100;
-    });
-    console.log('리뷰 100개 미만 상품:', lowReviewProducts);
-
-    const lowReviewCount = lowReviewProducts.length;
-    const lowReviewPercentage = top12Products.length > 0 
-        ? ((lowReviewCount / top12Products.length) * 100).toFixed(1)
-        : '0.0';
-
-    console.log('최종 계산된 값:', {
-        lowReviewCount,
-        lowReviewPercentage,
-        top12Length: top12Products.length
-    });
-
-    return {
-        rocketDeliveryPercentage,
-        averagePrice,
-        adStats,
-        deliveryStats,
-        lowReviewCount,
-        lowReviewPercentage
-    };
-}
-
-function getDeliveryBadgeClass(deliveryType) {
-    switch (deliveryType) {
-        case '로켓배송':
-            return 'rocket';
-        case '판매자로켓':
-            return 'seller-rocket';
-        case '로켓직구':
-            return 'global';
-        default:
-            return 'normal';
-    }
 }
 
 function displaySearchResults(data) {
@@ -409,11 +343,22 @@ function displayKeywordStats(data, searchKeyword) {
     
     container.style.display = 'block';
     
-    // 검색 키워드 데이터 찾기
-    const searchKeywordData = data.find(item => item.keyword === searchKeyword);
+    // 띄어쓰기 제거된 키워드 생성
+    const keywordWithoutSpaces = searchKeyword.replace(/\s+/g, '');
     
-    // 검색 키워드를 제외한 나머지 데이터
-    const otherKeywords = data.filter(item => item.keyword !== searchKeyword);
+    // 검색 키워드 데이터 찾기 (원본 키워드와 띄어쓰기 제거된 키워드 모두 확인)
+    const searchKeywordData = data.find(item => 
+        item.keyword === searchKeyword || 
+        item.keyword === keywordWithoutSpaces ||
+        item.keyword.replace(/\s+/g, '') === keywordWithoutSpaces
+    );
+    
+    // 검색 키워드를 제외한 나머지 데이터 (원본 키워드와 띄어쓰기 제거된 키워드 모두 제외)
+    const otherKeywords = data.filter(item => 
+        item.keyword !== searchKeyword && 
+        item.keyword !== keywordWithoutSpaces &&
+        item.keyword.replace(/\s+/g, '') !== keywordWithoutSpaces
+    );
     
     // 나머지 키워드를 총 검색량 기준으로 내림차순 정렬
     const sortedOtherKeywords = [...otherKeywords].sort((a, b) => b.totalCount - a.totalCount);
@@ -431,6 +376,21 @@ function displayKeywordStats(data, searchKeyword) {
                 <td>${searchKeywordData.totalCount.toLocaleString()}</td>
                 <td>${searchKeywordData.competition || '-'}</td>
                 <td>${searchKeywordData.averageBid ? searchKeywordData.averageBid.toLocaleString() + '원' : '-'}</td>
+            </tr>
+            <tr class="separator-row">
+                <td colspan="6"><hr></td>
+            </tr>
+        `;
+    } else {
+        // 검색 키워드가 데이터에 없는 경우 안내 메시지 추가
+        rows += `
+            <tr class="search-keyword-row">
+                <td><strong>${searchKeyword}</strong> (검색어) - 데이터 없음</td>
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
             </tr>
             <tr class="separator-row">
                 <td colspan="6"><hr></td>

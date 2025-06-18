@@ -19,10 +19,22 @@
     border: 1px dashed #dee2e6;
 }
 
+.error-message {
+    text-align: center;
+    padding: 40px;
+    color: #dc3545;
+    font-size: 16px;
+    background-color: #f8d7da;
+    border-radius: 8px;
+    border: 1px solid #f5c6cb;
+}
+
 .search-container {
     display: flex;
     gap: 10px;
     margin-bottom: 20px;
+    flex-wrap: wrap;
+    align-items: center;
 }
 
 .search-input {
@@ -31,6 +43,7 @@
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 14px;
+    min-width: 200px;
 }
 
 .search-button {
@@ -45,6 +58,33 @@
 
 .search-button:hover {
     background-color: #2d5cd9;
+}
+
+/* 검색 옵션 스타일 */
+.search-options {
+    width: 100%;
+    margin-top: 10px;
+}
+
+.option-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #495057;
+    user-select: none;
+}
+
+.option-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #346aff;
+}
+
+.option-checkbox:hover {
+    color: #346aff;
 }
 
 .search-results {
