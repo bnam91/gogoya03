@@ -85,7 +85,7 @@ export function initPage() {
         // brand-list 컨테이너 다음에 키워드 검색 컨테이너 추가
         const brandListContainer = leftContent.querySelector('#brand-list');
         brandListContainer.insertAdjacentHTML('afterend', `
-            <div id="keyword-search-list" class="list-container" style="background-color: #fff; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; margin-top: 1rem;">
+            <div id="brand-match-keyword-search-list" class="list-container" style="background-color: #fff; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; margin-top: 1rem;">
                 <div class="list-header" style="padding: 0.75rem; background-color: #f3f4f6; border-bottom: 1px solid #e5e7eb; font-weight: 500;">
                     <span>키워드 검색</span>
                 </div>
@@ -93,18 +93,18 @@ export function initPage() {
                     <div class="input-group" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
                         <input 
                             type="text" 
-                            id="keyword-search-input" 
+                            id="brand-match-keyword-search-input" 
                             class="form-input" 
                             placeholder="검색할 키워드 입력"
                             style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;"
                         >
                         <button 
-                            id="keyword-search-btn" 
+                            id="brand-match-keyword-search-btn" 
                             class="btn btn-primary"
                             style="padding: 0.5rem 1rem; background-color: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer;"
                         >검색</button>
                     </div>
-                    <div id="keyword-search-results" style="max-height: 1000px; overflow-y: auto;">
+                    <div id="brand-match-keyword-search-results" style="max-height: 1000px; overflow-y: auto;">
                         <!-- 검색 결과가 여기에 표시됩니다 -->
                     </div>
                 </div>
@@ -112,9 +112,9 @@ export function initPage() {
         `);
 
         // 키워드 검색 이벤트 리스너 추가
-        const keywordSearchBtn = document.getElementById('keyword-search-btn');
-        const keywordSearchInput = document.getElementById('keyword-search-input');
-        const keywordSearchResults = document.getElementById('keyword-search-results');
+        const keywordSearchBtn = document.getElementById('brand-match-keyword-search-btn');
+        const keywordSearchInput = document.getElementById('brand-match-keyword-search-input');
+        const keywordSearchResults = document.getElementById('brand-match-keyword-search-results');
 
         // 키워드 하이라이트 함수 추가
         function highlightKeyword(text, keyword) {
@@ -172,15 +172,28 @@ export function initPage() {
 
                 // 키워드로 게시물 검색 (새로운 API 사용)
                 const results = await window.api.searchContentByKeyword(influencerName, keyword);
+                console.log('검색 결과:', results);
 
                 if (results.length === 0) {
                     keywordSearchResults.innerHTML = '<div style="text-align: center; padding: 1rem; color: #666;">검색 결과가 없습니다.</div>';
                     return;
                 }
 
+                // 검색어가 포함된 결과만 필터링
+                const filteredResults = results.filter(result => {
+                    const content = (result.content || '').toLowerCase();
+                    const searchKeyword = keyword.toLowerCase();
+                    return content.includes(searchKeyword);
+                });
+
+                if (filteredResults.length === 0) {
+                    keywordSearchResults.innerHTML = '<div style="text-align: center; padding: 1rem; color: #666;">검색 결과가 없습니다.</div>';
+                    return;
+                }
+
                 // 검색 결과 표시
-                const sortedResults = results.sort((a, b) => new Date(b.cr_at) - new Date(a.cr_at));
-                keywordSearchResults.innerHTML = sortedResults.map(result => `
+                const sortedResults = filteredResults.sort((a, b) => new Date(b.cr_at) - new Date(a.cr_at));
+                const resultsHTML = sortedResults.map(result => `
                     <div class="search-result-item" style="padding: 1rem; border-bottom: 1px solid #e5e7eb;">
                         <div style="font-size: 0.875rem; color: #666; margin-bottom: 0.5rem;">
                             <span style="margin-right: 1rem;">브랜드: ${result['09_brand'] || '정보 없음'}</span>
@@ -204,6 +217,9 @@ export function initPage() {
                         </div>
                     </div>
                 `).join('');
+
+                // 검색 결과를 DOM에 추가
+                keywordSearchResults.innerHTML = resultsHTML;
             } catch (error) {
                 console.error('키워드 검색 중 오류 발생:', error);
                 keywordSearchResults.innerHTML = '<div style="text-align: center; padding: 1rem; color: #dc2626;">검색 중 오류가 발생했습니다.</div>';
